@@ -158,7 +158,7 @@ def main_worker(gpu, ngpus_per_node, args):
         dist.init_process_group(backend=args.dist_backend, init_method=args.dist_url,
                                 world_size=args.world_size, rank=args.rank)
     # create model
-    print("=> creating model '{}'".format(args.arch))
+    print("=> creating model ")
     model = moco.builder.MoCo(
         args.moco_dim, args.moco_k, args.moco_m, args.moco_t, args.mlp)
     print(model)
@@ -268,14 +268,13 @@ def main_worker(gpu, ngpus_per_node, args):
         train(train_loader, model, criterion, optimizer, epoch, args)
 
         n_ckpt_period = 10
+        if epoch > args.epochs - 10: n_ckpt_period = 1
         if not args.multiprocessing_distributed or (args.multiprocessing_distributed
                 and args.rank % ngpus_per_node == 0) and ((epoch + 1) % n_ckpt_period == 0):
-            if epoch > args.epochs - 10: n_ckpt_period = 1
             state = {'encoder_q': model.module.encoder_q.get_states(),
                      'encoder_k': model.module.encoder_k.get_states()}
             save_checkpoint({
                 'epoch': epoch + 1,
-                'arch': args.arch,
                 #  'state_dict': model.state_dict(),
                 'state_dict': state,
                 'optimizer' : optimizer.state_dict(),
