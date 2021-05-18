@@ -29,9 +29,9 @@ class MoCo(nn.Module):
 
         #  self.encoder_q = resnet50(num_classes=dim)
         #  self.encoder_k = resnet50(num_classes=dim)
-        model_type = 'ibn_a_resnet_densecl-101'
-        self.encoder_q = build_model(model_type, n_classes=dim)
-        self.encoder_k = build_model(model_type, n_classes=dim)
+        model_args = dict(model_type='BiSeNetV2TrainWrapperDenseCL', n_classes=dim)
+        self.encoder_q = build_model(model_args)
+        self.encoder_k = build_model(model_args)
 
         if mlp:  # hack: brute-force replacement
             dim_mlp = self.encoder_q.fc.weight.shape[1]

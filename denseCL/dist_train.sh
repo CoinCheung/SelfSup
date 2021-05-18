@@ -3,9 +3,10 @@ export CUDA_VISIBLE_DEVICES=0,1,2,3,4,5,6,7
 
 
 # for pretrain
-DATAPATH=/data/zzy/.datasets/imagenet
+DATAPATH=/data/zzy/imagenet
 # DATAPATH=$1
 EPOCHS=200
+# EPOCHS=1
 python main_densecl.py --lr 0.03 --batch-size 256 --epochs $EPOCHS --world-size 1 --rank 0 --dist-url 'tcp://localhost:10001' --multiprocessing-distributed --use-mixed-precision --mlp --moco-t 0.2 --aug-plus --cos $DATAPATH
 
 # linear eval
