@@ -284,12 +284,14 @@ def main_worker(gpu, ngpus_per_node, args):
 def train(train_loader, model, criterion, optimizer, epoch, args):
     batch_time = AverageMeter('Time', ':6.3f')
     data_time = AverageMeter('Data', ':6.3f')
-    losses = AverageMeter('Loss', ':.4e')
+    losses_cls = AverageMeter('Loss_cls', ':.4e')
+    losses_dense = AverageMeter('Loss_dense', ':.4e')
     top1 = AverageMeter('Acc@1', ':6.2f')
     top5 = AverageMeter('Acc@5', ':6.2f')
     progress = ProgressMeter(
         len(train_loader),
-        [batch_time, data_time, losses, top1, top5],
+        #  [batch_time, data_time, losses, top1, top5],
+        [losses_cls, losses_dense, top1, top5],
         prefix="Epoch: [{}]".format(epoch))
 
     # amp scalar
@@ -311,14 +313,15 @@ def train(train_loader, model, criterion, optimizer, epoch, args):
         with amp.autocast(enabled=args.use_mixed_precision):
             output, target, output_dense, target_dense = model(
                     im_q=images[0], im_k=images[1])
-            loss = criterion(output, target)
+            loss_cls = criterion(output, target)
             loss_dense = criterion(output_dense, target_dense)
-            loss = 0.5 * (loss + loss_dense)
+            loss = 0.5 * (loss_cls + loss_dense)
 
         # acc1/acc5 are (K+1)-way contrast classifier accuracy
         # measure accuracy and record loss
         acc1, acc5 = accuracy(output, target, topk=(1, 5))
-        losses.update(loss.item(), images[0].size(0))
+        losses_cls.update(loss_cls.item(), images[0].size(0))
+        losses_dense.update(loss_dense.item(), images[0].size(0))
         top1.update(acc1[0], images[0].size(0))
         top5.update(acc5[0], images[0].size(0))
 

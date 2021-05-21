@@ -6,6 +6,17 @@ import torch.nn as nn
 from cbl_models import build_model
 
 
+@amp.autocast(enabled=False)
+def normalize(feat, dim):
+    '''
+    加上clamp可以防止fp16+adam的时候loss变成nan
+    '''
+    feat = feat.float().clamp(-65400., 65400.)
+    norm = feat.norm(dim=dim, keepdim=True)
+    res = feat.div(norm).clamp(-65400., 65400.).half()
+    return res
+
+
 class MoCo(nn.Module):
     """
     Build a MoCo model with: a query encoder, a key encoder, and a queue
@@ -63,7 +74,8 @@ class MoCo(nn.Module):
     def _dequeue_and_enqueue(self, keys, dense_keys):
         # gather keys before updating queue
         keys = concat_all_gather(keys)
-        dense_keys = nn.functional.normalize(dense_keys.mean(dim=2), dim=1)
+        #  dense_keys = nn.functional.normalize(dense_keys.mean(dim=2), dim=1)
+        dense_keys = normalize(dense_keys.mean(dim=2), dim=1)
         dense_keys = concat_all_gather(dense_keys)
 
         batch_size = keys.shape[0]
@@ -138,11 +150,13 @@ class MoCo(nn.Module):
 
         # compute query features
         q, dense_q, feat_q = self.encoder_q(im_q)  # queries: NxC
-        q = nn.functional.normalize(q, dim=1)
+        #  q = nn.functional.normalize(q, dim=1)
+        q = normalize(q, dim=1)
         n, c, h, w = feat_q.size()
         dim_dense = dense_q.size(1)
         dense_q, feat_q = dense_q.view(n, dim_dense, -1), feat_q.view(n, c, -1)
-        dense_q = nn.functional.normalize(dense_q, dim=1)
+        #  dense_q = nn.functional.normalize(dense_q, dim=1)
+        dense_q = normalize(dense_q, dim=1)
 
         # compute key features
         with torch.no_grad():  # no gradient to keys
@@ -152,17 +166,21 @@ class MoCo(nn.Module):
             im_k, idx_unshuffle = self._batch_shuffle_ddp(im_k)
 
             k, dense_k, feat_k = self.encoder_k(im_k)  # keys: NxC
-            k = nn.functional.normalize(k, dim=1)
+            #  k = nn.functional.normalize(k, dim=1)
+            k = normalize(k, dim=1)
             dense_k, feat_k = dense_k.view(n, dim_dense, -1), feat_k.view(n, c, -1)
-            dense_k_norm = nn.functional.normalize(dense_k, dim=1)
+            #  dense_k_norm = nn.functional.normalize(dense_k, dim=1)
+            dense_k_norm = normalize(dense_k, dim=1)
 
             # undo shuffle
             k, feat_k, dense_k_norm = self._batch_unshuffle_ddp(
                     k, feat_k, dense_k_norm, idx_unshuffle)
 
             ## match
-            feat_q_norm = nn.functional.normalize(feat_q, dim=1)
-            feat_k_norm = nn.functional.normalize(feat_k, dim=1)
+            #  feat_q_norm = nn.functional.normalize(feat_q, dim=1)
+            #  feat_k_norm = nn.functional.normalize(feat_k, dim=1)
+            feat_q_norm = normalize(feat_q, dim=1)
+            feat_k_norm = normalize(feat_k, dim=1)
             cosine = torch.einsum('nca,ncb->nab', feat_q_norm, feat_k_norm)
             pos_idx = cosine.argmax(dim=-1)
             dense_k_norm = dense_k_norm.gather(2, pos_idx.unsqueeze(1).expand(-1, dim_dense, -1))
