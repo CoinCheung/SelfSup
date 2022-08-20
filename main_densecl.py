@@ -1,5 +1,4 @@
 #!/usr/bin/env python
-# Copyright (c) Facebook, Inc. and its affiliates. All Rights Reserved
 import argparse
 import builtins
 import math
@@ -104,6 +103,9 @@ parser.add_argument('--aug-plus', action='store_true',
 parser.add_argument('--cos', action='store_true',
                     help='use cosine lr schedule')
 
+# options for denseCL
+parser.add_argument('--dense', action='store_true',
+                    help='use denseCL')
 # options for regionCL
 parser.add_argument('--cutmix', action='store_true',
                     help='use regionCL')
@@ -170,7 +172,7 @@ def main_worker(gpu, ngpus_per_node, args):
     base_model = model_dict[args.arch]
     model = ModelWrapper(base_model,
         args.moco_dim, args.moco_k, args.moco_m,
-        args.moco_t, args.mlp, args.cutmix)
+        args.moco_t, args.mlp, args.cutmix, args.dense)
     print(model)
 
     if args.distributed:
@@ -317,10 +319,13 @@ def train(train_loader, model, optimizer, epoch, args):
 
         # compute output
         with amp.autocast(enabled=args.use_mixed_precision):
-            loss_cls, loss_dense, extra = model(
+            loss_cls, extra = model(
                     im_q=images[0], im_k=images[1])
 
-            loss = 0.5 * (loss_cls + loss_dense)
+            loss = loss_cls
+            if args.dense:
+                loss_dense = extra['loss_dense']
+                loss = 0.5 * (loss_cls + loss_dense)
             if args.cutmix:
                 loss_cutmix = extra['loss_cutmix']
                 loss = loss + loss_cutmix

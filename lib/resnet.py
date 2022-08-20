@@ -125,7 +125,7 @@ class ResNet(nn.Module):
 
     def __init__(self, block, layers, num_classes=1000, zero_init_residual=False,
                  groups=1, width_per_group=64, replace_stride_with_dilation=None,
-                 norm_layer=None):
+                 norm_layer=None, dense=False, mlp=False):
         super(ResNet, self).__init__()
         if norm_layer is None:
             norm_layer = nn.BatchNorm2d
@@ -155,12 +155,21 @@ class ResNet(nn.Module):
         self.layer4 = self._make_layer(block, 512, layers[3], stride=2,
                                        dilate=replace_stride_with_dilation[2])
         self.avgpool = nn.AdaptiveAvgPool2d((1, 1))
-        self.fc = nn.Linear(512 * block.expansion, num_classes)
-        self.dense_head = nn.Sequential(
-                nn.Conv2d(512 * block.expansion, 512 * block.expansion, 1, 1, 0, bias=True),
-                nn.ReLU(inplace=True),
-                nn.Conv2d(512 * block.expansion, num_classes, 1, 1, 0, bias=True)
-                )
+
+        ## moco mlp
+        dim_fc = 512 * block.expansion
+        self.fc = nn.Linear(dim_fc, num_classes)
+        if mlp:  # hack: brute-force replacement
+            self.fc = nn.Sequential(nn.Linear(dim_fc, dim_fc), nn.ReLU(), self.fc)
+
+        ## denseCL head
+        self.dense_head = nn.Identity()
+        if dense:
+            self.dense_head = nn.Sequential(
+                    nn.Conv2d(512 * block.expansion, 512 * block.expansion, 1, 1, 0, bias=True),
+                    nn.ReLU(inplace=True),
+                    nn.Conv2d(512 * block.expansion, num_classes, 1, 1, 0, bias=True)
+                    )
 
         for m in self.modules():
             if isinstance(m, nn.Conv2d):
