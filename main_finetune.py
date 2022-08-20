@@ -79,6 +79,8 @@ parser.add_argument('--multiprocessing-distributed', action='store_true',
 
 parser.add_argument('--pretrained', default='', type=str,
                     help='path to moco pretrained checkpoint')
+parser.add_argument('--linear-eval', dest='linear_eval', action='store_true',
+                    help='whether fix backbone for linear evaluation')
 
 best_acc1 = 0
 
@@ -145,9 +147,10 @@ def main_worker(gpu, ngpus_per_node, args):
     model = models.__dict__[args.arch]()
 
     # freeze all layers but the last fc
-    for name, param in model.named_parameters():
-        if name not in ['fc.weight', 'fc.bias']:
-            param.requires_grad = False
+    if args.linear_eval:
+        for name, param in model.named_parameters():
+            if name not in ['fc.weight', 'fc.bias']:
+                param.requires_grad = False
     # init the fc layer
     model.fc.weight.data.normal_(mean=0.0, std=0.01)
     model.fc.bias.data.zero_()
