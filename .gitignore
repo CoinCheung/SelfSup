@@ -116,3 +116,14 @@ venv.bak/
 .DS_Store
 
 .vscode/
+
+## Coin: 
+res/
+*pth
+dist_train_1.sh
+dist_train_2.sh
+*tar
+detection/output/
+*pkl
+pretrained/
+detection/output_denseCL_200ep.pkl

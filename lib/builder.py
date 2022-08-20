@@ -1,35 +1,25 @@
-# Copyright (c) Facebook, Inc. and its affiliates. All Rights Reserved
 import torch
 import torch.nn as nn
 
-#  from resnet import resnet50
-from cbl_models import build_model
+from .cutmix import CutMixer
 
 
-@amp.autocast(enabled=False)
-def normalize(feat, dim):
-    '''
-    加上clamp可以防止fp16+adam的时候loss变成nan
-    '''
-    feat = feat.float().clamp(-65400., 65400.)
-    norm = feat.norm(dim=dim, keepdim=True)
-    res = feat.div(norm).clamp(-65400., 65400.).half()
-    return res
 
-
-class MoCo(nn.Module):
+class ModelWrapper(nn.Module):
     """
-    Build a MoCo model with: a query encoder, a key encoder, and a queue
-    https://arxiv.org/abs/1911.05722
+    Build a DenseCL model with: a query encoder, a key encoder, and a queue
+    https://arxiv.org/abs/2011.09157
     """
-    def __init__(self, dim=128, K=65536, m=0.999, T=0.07, mlp=False):
+    def __init__(self, base_model, dim=128, K=65536, m=0.999, T=0.07, mlp=False, cutmix=False):
         """
         dim: feature dimension (default: 128)
         K: queue size; number of negative keys (default: 65536)
         m: moco momentum of updating key encoder (default: 0.999)
         T: softmax temperature (default: 0.07)
         """
-        super(MoCo, self).__init__()
+        super(ModelWrapper, self).__init__()
+
+        self.cutmixer = CutMixer(T=T) if cutmix else None
 
         self.K = K
         self.m = m
@@ -38,11 +28,8 @@ class MoCo(nn.Module):
         # create the encoders
         # num_classes is the output fc dimension
 
-        #  self.encoder_q = resnet50(num_classes=dim)
-        #  self.encoder_k = resnet50(num_classes=dim)
-        model_args = dict(model_type='BiSeNetV2TrainWrapperDenseCL', n_classes=dim)
-        self.encoder_q = build_model(model_args)
-        self.encoder_k = build_model(model_args)
+        self.encoder_q = base_model(num_classes=dim)
+        self.encoder_k = base_model(num_classes=dim)
 
         if mlp:  # hack: brute-force replacement
             dim_mlp = self.encoder_q.fc.weight.shape[1]
@@ -62,6 +49,9 @@ class MoCo(nn.Module):
 
         self.register_buffer("queue_ptr", torch.zeros(1, dtype=torch.long))
 
+        self.crit_cls = nn.CrossEntropyLoss()
+        self.crit_dense = nn.CrossEntropyLoss()
+
     @torch.no_grad()
     def _momentum_update_key_encoder(self):
         """
@@ -74,8 +64,7 @@ class MoCo(nn.Module):
     def _dequeue_and_enqueue(self, keys, dense_keys):
         # gather keys before updating queue
         keys = concat_all_gather(keys)
-        #  dense_keys = nn.functional.normalize(dense_keys.mean(dim=2), dim=1)
-        dense_keys = normalize(dense_keys.mean(dim=2), dim=1)
+        dense_keys = nn.functional.normalize(dense_keys.mean(dim=2), dim=1)
         dense_keys = concat_all_gather(dense_keys)
 
         batch_size = keys.shape[0]
@@ -150,13 +139,11 @@ class MoCo(nn.Module):
 
         # compute query features
         q, dense_q, feat_q = self.encoder_q(im_q)  # queries: NxC
-        #  q = nn.functional.normalize(q, dim=1)
-        q = normalize(q, dim=1)
+        q = nn.functional.normalize(q, dim=1)
         n, c, h, w = feat_q.size()
         dim_dense = dense_q.size(1)
         dense_q, feat_q = dense_q.view(n, dim_dense, -1), feat_q.view(n, c, -1)
-        #  dense_q = nn.functional.normalize(dense_q, dim=1)
-        dense_q = normalize(dense_q, dim=1)
+        dense_q = nn.functional.normalize(dense_q, dim=1)
 
         # compute key features
         with torch.no_grad():  # no gradient to keys
@@ -166,21 +153,17 @@ class MoCo(nn.Module):
             im_k, idx_unshuffle = self._batch_shuffle_ddp(im_k)
 
             k, dense_k, feat_k = self.encoder_k(im_k)  # keys: NxC
-            #  k = nn.functional.normalize(k, dim=1)
-            k = normalize(k, dim=1)
+            k = nn.functional.normalize(k, dim=1)
             dense_k, feat_k = dense_k.view(n, dim_dense, -1), feat_k.view(n, c, -1)
-            #  dense_k_norm = nn.functional.normalize(dense_k, dim=1)
-            dense_k_norm = normalize(dense_k, dim=1)
+            dense_k_norm = nn.functional.normalize(dense_k, dim=1)
 
             # undo shuffle
             k, feat_k, dense_k_norm = self._batch_unshuffle_ddp(
                     k, feat_k, dense_k_norm, idx_unshuffle)
 
             ## match
-            #  feat_q_norm = nn.functional.normalize(feat_q, dim=1)
-            #  feat_k_norm = nn.functional.normalize(feat_k, dim=1)
-            feat_q_norm = normalize(feat_q, dim=1)
-            feat_k_norm = normalize(feat_k, dim=1)
+            feat_q_norm = nn.functional.normalize(feat_q, dim=1)
+            feat_k_norm = nn.functional.normalize(feat_k, dim=1)
             cosine = torch.einsum('nca,ncb->nab', feat_q_norm, feat_k_norm)
             pos_idx = cosine.argmax(dim=-1)
             dense_k_norm = dense_k_norm.gather(2, pos_idx.unsqueeze(1).expand(-1, dim_dense, -1))
@@ -194,25 +177,38 @@ class MoCo(nn.Module):
 
         # logits: Nx(1+K)
         logits = torch.cat([l_pos, l_neg], dim=1)
-
         # apply temperature
         logits /= self.T
-
         # labels: positive key indicators
         labels = torch.zeros(logits.shape[0], dtype=torch.long).cuda()
+
+        loss_cls = self.crit_cls(logits, labels)
 
 
         ## densecl logits
         d_pos = torch.einsum('ncm,ncm->nm', dense_q, dense_k_norm).unsqueeze(1)
         d_neg = torch.einsum('ncm,ck->nkm', dense_q, self.queue_dense.clone().detach())
+
         logits_dense = torch.cat([d_pos, d_neg], dim=1)
         logits_dense = logits_dense / self.T
         labels_dense = torch.zeros((n, h*w), dtype=torch.long).cuda()
 
+        loss_dense = self.crit_dense(logits_dense, labels_dense)
+
+        extra = {'qk': [q, k], 'dense_qk': [dense_q, dense_k_norm],
+                'logits': logits , 'labels': labels}
+
+        ## regionCL
+        if self.cutmixer:
+            loss_cutmix = self.cutmixer.forward_mix(
+                    self.encoder_q, im_q, q, k, self.queue.detach())
+            extra.update({'loss_cutmix': loss_cutmix})
+
         # dequeue and enqueue
         self._dequeue_and_enqueue(k, dense_k)
 
-        return logits, labels, logits_dense, labels_dense
+        return loss_cls, loss_dense, extra
+
 
 
 # utils
