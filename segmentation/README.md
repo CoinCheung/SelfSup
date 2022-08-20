@@ -1,7 +1,7 @@
 
 ## Transferring to Detection
 
-The `train_net.py` script reproduces the semantic segmentation experiments on Cityscapes, the model is deeplabv3.
+The `train_net.py` script reproduces the semantic segmentation experiments on Cityscapes, the model is deeplabv3+.
 
 ### Instruction
 
@@ -34,10 +34,10 @@ The `train_net.py` script reproduces the semantic segmentation experiments on Ci
 4. Run training:
    ```
    # r50 
-   python train_net.py --config-file configs/coco_R_50_C4_2x_moco.yaml \
+   python train_net.py --config-file configs/deeplab_v3_plus_R_50_os16_mg124_poly_90k_bs16.yaml \
 	--num-gpus 8 MODEL.WEIGHTS ./output.pkl
    # r101 
-   python train_net.py --config-file configs/coco_R_101_C4_2x_moco.yaml \
+   python train_net.py --config-file configs/deeplab_v3_plus_R_101_os16_mg124_poly_90k_bs16.yaml \
 	--num-gpus 8 MODEL.WEIGHTS ./output.pkl
    ```
     
