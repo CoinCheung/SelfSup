@@ -1,4 +1,4 @@
-_BASE_: "coco_R_50_C4_2x.yaml"
+_BASE_: "coco_R_50_C4_1x.yaml"
 MODEL:
   PIXEL_MEAN: [123.675, 116.280, 103.530]
   PIXEL_STD: [58.395, 57.120, 57.375]

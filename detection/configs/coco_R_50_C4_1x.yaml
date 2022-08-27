@@ -9,5 +9,5 @@ DATASETS:
   TRAIN: ("coco_2017_train",)
   TEST: ("coco_2017_val",)
 SOLVER:
-  STEPS: (120000, 160000)
-  MAX_ITER: 180000
+  STEPS: (60000, 80000)
+  MAX_ITER: 90000

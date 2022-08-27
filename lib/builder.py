@@ -123,7 +123,6 @@ class ModelWrapper(nn.Module):
             dense_k_gather = concat_all_gather(dense_k)
             feat_k_gather = feat_k_gather[idx_this]
             dense_k_gather = dense_k_gather[idx_this]
-            res += [feat_k_gather, dense_k_gather]
 
 
         return k_gather[idx_this], feat_k_gather, dense_k_gather
