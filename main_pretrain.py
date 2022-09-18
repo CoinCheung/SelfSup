@@ -229,35 +229,6 @@ def main_worker(gpu, ngpus_per_node, args):
 
     # Data loading code
     traindir = os.path.join(args.data, 'train')
-    #  normalize = transforms.Normalize(mean=[0.485, 0.456, 0.406],
-    #                                   std=[0.229, 0.224, 0.225])
-    #  if args.aug_plus:
-    #      # MoCo v2's aug: similar to SimCLR https://arxiv.org/abs/2002.05709
-    #      augmentation = [
-    #          transforms.RandomResizedCrop(224, scale=(0.2, 1.)),
-    #          transforms.RandomApply([
-    #              transforms.ColorJitter(0.4, 0.4, 0.4, 0.1)  # not strengthened
-    #          ], p=0.8),
-    #          transforms.RandomGrayscale(p=0.2),
-    #          transforms.RandomApply([densecl.loader.GaussianBlur([.1, 2.])], p=0.5),
-    #          transforms.RandomHorizontalFlip(),
-    #          transforms.ToTensor(),
-    #          normalize
-    #      ]
-    #  else:
-    #      # MoCo v1's aug: the same as InstDisc https://arxiv.org/abs/1805.01978
-    #      augmentation = [
-    #          transforms.RandomResizedCrop(224, scale=(0.2, 1.)),
-    #          transforms.RandomGrayscale(p=0.2),
-    #          transforms.ColorJitter(0.4, 0.4, 0.4, 0.4),
-    #          transforms.RandomHorizontalFlip(),
-    #          transforms.ToTensor(),
-    #          normalize
-    #      ]
-    #
-    #  train_dataset = datasets.ImageFolder(
-    #      traindir,
-    #      densecl.loader.TwoCropsTransform(transforms.Compose(augmentation)))
 
     train_dataset = lib.loader.get_dataset(traindir, args.aug_plus)
 
@@ -270,13 +241,16 @@ def main_worker(gpu, ngpus_per_node, args):
         train_dataset, batch_size=args.batch_size, shuffle=(train_sampler is None),
         num_workers=args.workers, pin_memory=True, sampler=train_sampler, drop_last=True)
 
+    # amp scalar
+    scaler = amp.GradScaler()
+
     for epoch in range(args.start_epoch, args.epochs):
         if args.distributed:
             train_sampler.set_epoch(epoch)
         adjust_learning_rate(optimizer, epoch, args)
 
         # train for one epoch
-        train(train_loader, model, optimizer, epoch, args)
+        train(train_loader, model, optimizer, epoch, scaler, args)
 
         n_ckpt_period = 20
         if not args.multiprocessing_distributed or (args.multiprocessing_distributed
@@ -291,7 +265,7 @@ def main_worker(gpu, ngpus_per_node, args):
 
 
 #  def train(train_loader, model, criterion, criterion_dense, optimizer, epoch, args):
-def train(train_loader, model, optimizer, epoch, args):
+def train(train_loader, model, optimizer, epoch, scaler, args):
     batch_time = AverageMeter('Time', ':6.3f')
     data_time = AverageMeter('Data', ':6.3f')
     losses = AverageMeter('Loss', ':.4e')
@@ -302,8 +276,6 @@ def train(train_loader, model, optimizer, epoch, args):
         [batch_time, data_time, losses, top1, top5],
         prefix="Epoch: [{}]".format(epoch))
 
-    # amp scalar
-    scaler = amp.GradScaler()
 
     # switch to train mode
     model.train()

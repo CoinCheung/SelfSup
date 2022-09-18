@@ -17,10 +17,12 @@ DATASETS:
   TRAIN: ("cityscapes_fine_sem_seg_train",)
   TEST: ("cityscapes_fine_sem_seg_val",)
 SOLVER:
-  BASE_LR: 0.01
-  MAX_ITER: 90000
+  BASE_LR: 0.02
+  MAX_ITER: 45000
   LR_SCHEDULER_NAME: "WarmupPolyLR"
-  IMS_PER_BATCH: 16
+  IMS_PER_BATCH: 32
+  AMP:
+    ENABLED: True
 INPUT:
   MIN_SIZE_TRAIN: (512, 768, 1024, 1280, 1536, 1792, 2048)
   # MIN_SIZE_TRAIN: (128, 256)

@@ -14,7 +14,7 @@ WORD_SIZE=1
 RANK=0
 EPOCHS=200
 LR=0.03 # 8 gpus
-python main_densecl.py -a $ARCH --lr $LR --batch-size 256 --epochs $EPOCHS --world-size $WORD_SIZE --rank $RANK --dist-url $URL --multiprocessing-distributed --use-mixed-precision --mlp --moco-t 0.2 --aug-plus --cos $DATAPATH
+python main_pretrain.py -a $ARCH --lr $LR --batch-size 256 --epochs $EPOCHS --world-size $WORD_SIZE --rank $RANK --dist-url $URL --multiprocessing-distributed --use-mixed-precision --mlp --moco-t 0.2 --aug-plus --cos $DATAPATH
 
 
 ## regionCL-D r50/r101
@@ -25,7 +25,7 @@ WORD_SIZE=1
 RANK=0
 EPOCHS=200
 LR=0.03 # 8 gpus
-python main_densecl.py -a $ARCH --lr $LR --batch-size 256 --epochs $EPOCHS --world-size $WORD_SIZE --rank $RANK --dist-url $URL --multiprocessing-distributed --use-mixed-precision --mlp --moco-t 0.2 --aug-plus --cos $DATAPATH --cutmix
+python main_pretrain.py -a $ARCH --lr $LR --batch-size 256 --epochs $EPOCHS --world-size $WORD_SIZE --rank $RANK --dist-url $URL --multiprocessing-distributed --use-mixed-precision --mlp --moco-t 0.2 --aug-plus --cos $DATAPATH --cutmix
 
 
 ########

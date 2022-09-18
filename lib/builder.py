@@ -30,6 +30,14 @@ class ModelWrapper(nn.Module):
         # num_classes is the output fc dimension
         self.encoder_q = base_model(num_classes=dim, dense=dense, mlp=mlp)
         self.encoder_k = base_model(num_classes=dim, dense=dense, mlp=mlp)
+        ## predictor
+        #  mocov3-r50: fc-bn-relu-fc(bias=False)
+        #  self.predictor = nn.Sequential(
+        #          nn.Linear(dim, dim * 16, bias=False),
+        #          nn.BatchNorm1d(dim * 16),
+        #          nn.ReLU(inplace=True),
+        #          nn.Linear(dim * 16, dim, bias=False)
+        #          )
 
         for param_q, param_k in zip(self.encoder_q.parameters(), self.encoder_k.parameters()):
             param_k.data.copy_(param_q.data)  # initialize
@@ -62,12 +70,14 @@ class ModelWrapper(nn.Module):
         batch_size = keys.shape[0]
         ptr = int(self.queue_ptr)
         assert self.K % batch_size == 0  # for simplicity
+        #  self.queue.mul_(0.999)
         self.queue[:, ptr:ptr + batch_size] = keys.T # replace the keys at ptr (dequeue and enqueue)
 
         # DenseCL
         if self.dense:
             dense_keys = nn.functional.normalize(dense_keys.mean(dim=2), dim=1)
             dense_keys = concat_all_gather(dense_keys)
+            #  self.queue_dense.mul_(0.999)
             self.queue_dense[:, ptr:ptr + batch_size] = dense_keys.T
 
         ptr = (ptr + batch_size) % self.K  # move pointer
@@ -138,6 +148,7 @@ class ModelWrapper(nn.Module):
 
         # compute query features
         q, dense_q, feat_q = self.encoder_q(im_q)  # queries: NxC
+        #  q = self.predictor(q)
         n, c, h, w = feat_q.size()
         dim_dense = dense_q.size(1)
 
@@ -163,6 +174,8 @@ class ModelWrapper(nn.Module):
                 feat_q_norm = nn.functional.normalize(feat_q.flatten(2), dim=1)
                 feat_k_norm = nn.functional.normalize(feat_k.flatten(2), dim=1)
                 cosine = torch.einsum('nca,ncb->nab', feat_q_norm, feat_k_norm)
+                #  cosine = feat_q_norm.permute(0, 2, 1) @ feat_k_norm
+
                 pos_idx = cosine.argmax(dim=-1)
                 dense_k_norm = dense_k_norm.gather(2, pos_idx.unsqueeze(1
                     ).expand(-1, dim_dense, -1))
@@ -171,8 +184,10 @@ class ModelWrapper(nn.Module):
         q = nn.functional.normalize(q, dim=1)
         # positive logits: Nx1
         l_pos = torch.einsum('nc,nc->n', [q, k]).unsqueeze(-1)
+        #  l_pos = (q * k).sum(dim=1).unsqueeze(1)
         # negative logits: NxK
         l_neg = torch.einsum('nc,ck->nk', [q, self.queue.clone().detach()])
+        #  l_neg = q @ self.queue.clone().detach()
 
         # logits: Nx(1+K)
         logits = torch.cat([l_pos, l_neg], dim=1)
@@ -192,6 +207,8 @@ class ModelWrapper(nn.Module):
 
             d_pos = torch.einsum('ncm,ncm->nm', dense_q, dense_k_norm).unsqueeze(1)
             d_neg = torch.einsum('ncm,ck->nkm', dense_q, self.queue_dense.clone().detach())
+            #  d_pos = (dense_q * dense_k_norm).sum(dim=1).unsqueeze(1)
+            #  d_neg = self.queue_dense.clone().permute(1, 0).unsqueeze(0).detach() @ dense_q
 
             logits_dense = torch.cat([d_pos, d_neg], dim=1)
             logits_dense = logits_dense / self.T

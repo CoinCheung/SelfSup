@@ -7,6 +7,7 @@ import random
 import shutil
 import time
 import warnings
+import math
 
 import torch
 import torch.nn as nn
@@ -34,8 +35,10 @@ parser.add_argument('-a', '--arch', metavar='ARCH', default='resnet50',
                     help='model architecture: ' +
                         ' | '.join(model_names) +
                         ' (default: resnet50)')
-parser.add_argument('-j', '--workers', default=32, type=int, metavar='N',
+parser.add_argument('-j', '--workers', default=64, type=int, metavar='N',
                     help='number of data loading workers (default: 32)')
+parser.add_argument('--warmup-epochs', default=5, type=int, metavar='N',
+                    help='number of warmup epochs to run')
 parser.add_argument('--epochs', default=100, type=int, metavar='N',
                     help='number of total epochs to run')
 parser.add_argument('--start-epoch', default=0, type=int, metavar='N',
@@ -49,12 +52,14 @@ parser.add_argument('--lr', '--learning-rate', default=30., type=float,
                     metavar='LR', help='initial learning rate', dest='lr')
 parser.add_argument('--schedule', default=[60, 80], nargs='*', type=int,
                     help='learning rate schedule (when to drop lr by a ratio)')
+parser.add_argument('--cos', action='store_true',
+                    help='use cosine lr schedule')
 parser.add_argument('--momentum', default=0.9, type=float, metavar='M',
                     help='momentum')
 parser.add_argument('--wd', '--weight-decay', default=0., type=float,
                     metavar='W', help='weight decay (default: 0.)',
                     dest='weight_decay')
-parser.add_argument('-p', '--print-freq', default=10, type=int,
+parser.add_argument('-p', '--print-freq', default=100, type=int,
                     metavar='N', help='print frequency (default: 10)')
 parser.add_argument('--resume', default='', type=str, metavar='PATH',
                     help='path to latest checkpoint (default: none)')
@@ -145,7 +150,7 @@ def main_worker(gpu, ngpus_per_node, args):
                                 world_size=args.world_size, rank=args.rank)
     # create model
     print("=> creating model '{}'".format(args.arch))
-    model = models.__dict__[args.arch]()
+    model = models.__dict__[args.arch](pretrained=False)
 
     # freeze all layers but the last fc
     if args.linear_eval:
@@ -174,6 +179,8 @@ def main_worker(gpu, ngpus_per_node, args):
 
             args.start_epoch = 0
             msg = model.load_state_dict(state_dict, strict=False)
+            print('mssing_keys: ', msg.missing_keys)
+            print('unexpected_keys: ', msg.unexpected_keys)
             assert set(msg.missing_keys) == {"fc.weight", "fc.bias"}
 
             print("=> loaded pre-trained model '{}'".format(args.pretrained))
@@ -214,7 +221,7 @@ def main_worker(gpu, ngpus_per_node, args):
 
     # optimize only the linear classifier
     parameters = list(filter(lambda p: p.requires_grad, model.parameters()))
-    assert len(parameters) == 2  # fc.weight, fc.bias
+    if args.linear_eval: assert len(parameters) == 2  # fc.weight, fc.bias
     optimizer = torch.optim.SGD(parameters, args.lr,
                                 momentum=args.momentum,
                                 weight_decay=args.weight_decay)
@@ -292,14 +299,16 @@ def main_worker(gpu, ngpus_per_node, args):
         train(train_loader, model, criterion, optimizer, epoch, scaler, args)
 
         # evaluate on validation set
-        acc1 = validate(val_loader, model, criterion, args)
+        if (epoch + 1) % 10 == 0 or (epoch + 1) == args.epochs:
+            acc1 = validate(val_loader, model, criterion, args)
 
-        # remember best acc@1 and save checkpoint
-        is_best = acc1 > best_acc1
-        best_acc1 = max(acc1, best_acc1)
+            # remember best acc@1 and save checkpoint
+            is_best = acc1 > best_acc1
+            best_acc1 = max(acc1, best_acc1)
 
+        n_ckpt_period = 20
         if not args.multiprocessing_distributed or (args.multiprocessing_distributed
-                and args.rank % ngpus_per_node == 0):
+                and args.rank % ngpus_per_node == 0) and ((epoch + 1) % n_ckpt_period == 0):
             save_checkpoint({
                 'epoch': epoch + 1,
                 'arch': args.arch,
@@ -329,7 +338,8 @@ def train(train_loader, model, criterion, optimizer, epoch, scaler, args):
     BatchNorm in train mode may revise running mean/std (even if it receives
     no gradient), which are part of the model parameters too.
     """
-    model.eval()
+    model.train()
+    if args.linear_eval: model.eval()
 
     end = time.time()
     for i, (images, target) in enumerate(train_loader):
@@ -338,10 +348,10 @@ def train(train_loader, model, criterion, optimizer, epoch, scaler, args):
 
         if args.gpu is not None:
             images = images.cuda(args.gpu, non_blocking=True)
-        target = target.cuda(args.gpu, non_blocking=True)
+            target = target.cuda(args.gpu, non_blocking=True)
 
         # compute output
-        with amp.autocast(enabled=args.use_mixed_precision):
+        with amp.autocast(enabled=True):
             output = model(images)
             loss = criterion(output, target)
 
@@ -486,8 +496,18 @@ class ProgressMeter(object):
 def adjust_learning_rate(optimizer, epoch, args):
     """Decay the learning rate based on schedule"""
     lr = args.lr
-    for milestone in args.schedule:
-        lr *= 0.1 if epoch >= milestone else 1.
+    if epoch < args.warmup_epochs:
+        ratio = (epoch + 1) / args.warmup_epochs
+        lr *= ratio
+    else:
+        if args.cos:  # cosine lr schedule
+            cur_epoch = epoch - args.warmup_epochs + 1
+            total_epoch = args.epochs - args.warmup_epochs + 1
+            ratio = 0.5 * (1. + math.cos(math.pi * cur_epoch / total_epoch))
+            lr *= ratio
+        else:
+            for milestone in args.schedule:
+                lr *= 0.1 if epoch >= milestone else 1.
     for param_group in optimizer.param_groups:
         param_group['lr'] = lr
 

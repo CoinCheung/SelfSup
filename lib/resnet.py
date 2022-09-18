@@ -160,7 +160,15 @@ class ResNet(nn.Module):
         dim_fc = 512 * block.expansion
         self.fc = nn.Linear(dim_fc, num_classes)
         if mlp:  # hack: brute-force replacement
-            self.fc = nn.Sequential(nn.Linear(dim_fc, dim_fc), nn.ReLU(), self.fc)
+            # mocov2: fc-relu-fc
+            # mocov3-r50: fc-bn-relu-fc-bn(no_affine)
+            self.fc = nn.Sequential(
+                    nn.Linear(dim_fc, dim_fc),
+                    #  nn.BatchNorm1d(dim_fc),
+                    nn.ReLU(inplace=True),
+                    self.fc,
+                    #  nn.BatchNorm1d(num_classes, affine=False)
+            )
 
         ## denseCL head
         self.dense_head = nn.Identity()
