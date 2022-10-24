@@ -230,10 +230,10 @@ class ResNet(nn.Module):
         x = self.layer1(x)
         x = self.layer2(x)
         x = self.layer3(x)
-        feat = self.layer4(x)
-        return feat
+        x = self.layer4(x)
+        return x
 
-    def _forward_impl(self, x):
+    def forward_pretrain(self, x):
         feat = self.forward_backbone(x)
         x = self.avgpool(feat)
         x = torch.flatten(x, 1)
@@ -244,7 +244,11 @@ class ResNet(nn.Module):
         #  return x
 
     def forward(self, x):
-        return self._forward_impl(x)
+        feat = self.forward_backbone(x)
+        x = self.avgpool(feat)
+        x = torch.flatten(x, 1)
+        logits = self.fc(x)
+        return logits
 
     def forward_cutmix(self, mix_res):
         ims_mix, perm, perm_unshuf, h, w, hst, wst = mix_res

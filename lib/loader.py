@@ -17,6 +17,17 @@ class TwoCropsTransform:
         return [q, k]
 
 
+class NCropsTransform:
+    """Take two random crops of one image as the query and key."""
+
+    def __init__(self, base_transform, n_crops=2):
+        self.base_transform = base_transform
+        self.n_crops = n_crops
+
+    def __call__(self, x):
+        return [self.base_transform(x) for _ in range(self.n_crops)]
+
+
 class GaussianBlur(object):
     """Gaussian blur augmentation in SimCLR https://arxiv.org/abs/2002.05709"""
 
@@ -29,7 +40,7 @@ class GaussianBlur(object):
         return x
 
 
-def get_dataset(traindir, aug_plus=True):
+def get_dataset(traindir, aug_plus=True, n_views=2):
     normalize = transforms.Normalize(mean=[0.485, 0.456, 0.406],
                                      std=[0.229, 0.224, 0.225])
     if aug_plus:
@@ -58,5 +69,7 @@ def get_dataset(traindir, aug_plus=True):
 
     train_dataset = datasets.ImageFolder(
         traindir,
-        TwoCropsTransform(transforms.Compose(augmentation)))
+        #  TwoCropsTransform(transforms.Compose(augmentation)))
+        NCropsTransform(transforms.Compose(augmentation), n_crops=n_views)
+    )
     return train_dataset

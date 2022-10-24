@@ -1,3 +1,5 @@
+import itertools
+
 import torch
 import torch.nn as nn
 
@@ -10,7 +12,7 @@ class ModelWrapper(nn.Module):
     Build a DenseCL model with: a query encoder, a key encoder, and a queue
     https://arxiv.org/abs/2011.09157
     """
-    def __init__(self, base_model, dim=128, K=65536, m=0.999, T=0.07, mlp=False, cutmix=False, dense=False):
+    def __init__(self, base_model, dim=128, K=65536, m=0.999, T=0.07, mlp=False, cutmix=False, dense=False, fast_moco=False):
         """
         dim: feature dimension (default: 128)
         K: queue size; number of negative keys (default: 65536)
@@ -21,6 +23,7 @@ class ModelWrapper(nn.Module):
 
         self.cutmixer = CutMixer(T=T) if cutmix else None
         self.dense = dense
+        self.fast_moco = fast_moco
 
         self.K = K
         self.m = m
@@ -137,17 +140,17 @@ class ModelWrapper(nn.Module):
 
         return k_gather[idx_this], feat_k_gather, dense_k_gather
 
-    def forward(self, im_q, im_k):
+    def forward(self, images):
         """
         Input:
-            im_q: a batch of query images
-            im_k: a batch of key images
+            images: a list of images batchs in order of q, k,fast_moco
         Output:
             logits, targets
         """
 
+        im_q, im_k = images[:2]
         # compute query features
-        q, dense_q, feat_q = self.encoder_q(im_q)  # queries: NxC
+        q, dense_q, feat_q = self.encoder_q.forward_pretrain(im_q)  # queries: NxC
         #  q = self.predictor(q)
         n, c, h, w = feat_q.size()
         dim_dense = dense_q.size(1)
@@ -160,7 +163,7 @@ class ModelWrapper(nn.Module):
             im_k, idx_unshuffle = self._batch_shuffle_ddp(im_k)
 
             # inference key in shuffled order
-            k, dense_k, feat_k = self.encoder_k(im_k)  # keys: NxC
+            k, dense_k, feat_k = self.encoder_k.forward_pretrain(im_k)  # keys: NxC
 
             # undo shuffle
             k, feat_k, dense_k = self._batch_unshuffle_ddp(
@@ -180,55 +183,81 @@ class ModelWrapper(nn.Module):
                 dense_k_norm = dense_k_norm.gather(2, pos_idx.unsqueeze(1
                     ).expand(-1, dim_dense, -1))
 
-        # compute logits
+
+        loss = 0
+        # info-nce between two views as moco
         q = nn.functional.normalize(q, dim=1)
-        # positive logits: Nx1
-        l_pos = torch.einsum('nc,nc->n', [q, k]).unsqueeze(-1)
-        #  l_pos = (q * k).sum(dim=1).unsqueeze(1)
-        # negative logits: NxK
-        l_neg = torch.einsum('nc,ck->nk', [q, self.queue.clone().detach()])
-        #  l_neg = q @ self.queue.clone().detach()
+        loss_cls, logits, labels = self.info_nce(q, k, self.queue, self.T)
+        loss = loss + loss_cls
 
-        # logits: Nx(1+K)
-        logits = torch.cat([l_pos, l_neg], dim=1)
-        # apply temperature
-        logits /= self.T
-        # labels: positive key indicators
-        labels = torch.zeros(logits.shape[0], dtype=torch.long).cuda()
-
-        loss_cls = self.crit_cls(logits, labels)
-
-        extra = {'qk': [q, k], 'logits': logits , 'labels': labels}
-
-        ## densecl logits
+        ## densecl
         if self.dense:
             dense_q, feat_q = dense_q.flatten(2), feat_q.flatten(2)
             dense_q = nn.functional.normalize(dense_q, dim=1)
 
             d_pos = torch.einsum('ncm,ncm->nm', dense_q, dense_k_norm).unsqueeze(1)
             d_neg = torch.einsum('ncm,ck->nkm', dense_q, self.queue_dense.clone().detach())
-            #  d_pos = (dense_q * dense_k_norm).sum(dim=1).unsqueeze(1)
-            #  d_neg = self.queue_dense.clone().permute(1, 0).unsqueeze(0).detach() @ dense_q
 
             logits_dense = torch.cat([d_pos, d_neg], dim=1)
             logits_dense = logits_dense / self.T
             labels_dense = torch.zeros((n, h*w), dtype=torch.long).cuda()
 
             loss_dense = self.crit_dense(logits_dense, labels_dense)
-
-            extra.update({'dense_qk': [dense_q, dense_k_norm],
-                'loss_dense': loss_dense})
+            loss = loss + loss_dense
 
         ## regionCL
         if self.cutmixer:
             loss_cutmix = self.cutmixer.forward_mix(
                     self.encoder_q, im_q, q, k, self.queue.detach())
-            extra.update({'loss_cutmix': loss_cutmix})
+            loss = loss + loss_cutmix
+
+        ## fast-moco
+        if self.fast_moco:
+            im_local = images[2]
+            n, _, h, w = im_local.size()
+            im_local = torch.cat([
+                im_local[..., :h//2, :w//2],
+                im_local[..., h//2:, :w//2],
+                im_local[..., :h//2, w//2:],
+                im_local[..., h//2:, w//2:],
+                ], dim=0)
+            q_local = self.encoder_q.forward_backbone(im_local)
+            q_local = torch.mean(q_local, dim=(2, 3)).split(n, dim=0)
+            q_local = [self.encoder_q.fc((el[0] + el[1])/2.)
+                    for el in itertools.combinations(q_local, r=2)]
+            q_local = [nn.functional.normalize(ql, dim=1) for ql in q_local]
+            loss_fast_moco = [self.info_nce(ql, k, self.queue, self.T)[0]
+                    for ql in q_local]
+            loss_fast_moco = sum(loss_fast_moco) / len(loss_fast_moco)
+            loss = loss + loss_fast_moco
+            #  im_local = images[2]
+            #  q_local = self.encoder_q.forward_pretrain(im_local)[0]
+            #  q_local = nn.functional.normalize(q_local, dim=1)
+            #  loss_local = self.info_nce(q_local, k, self.queue, self.T)[0]
+            #  loss = loss + loss_local
 
         # dequeue and enqueue
         self._dequeue_and_enqueue(k, dense_k)
 
-        return loss_cls, extra
+        #  logits = torch.empty(n, 6).float().cuda()
+        #  labels = torch.zeros(n).long().cuda()
+
+        return loss, logits, labels
+
+
+    def info_nce(self, q, k, queue, T):
+        # positive logits: Nx1
+        l_pos = torch.einsum('nc,nc->n', [q, k]).unsqueeze(-1)
+        # negative logits: NxK
+        l_neg = torch.einsum('nc,ck->nk', [q, queue.clone().detach()])
+        # logits: Nx(1+K)
+        logits = torch.cat([l_pos, l_neg], dim=1)
+        # apply temperature
+        logits /= T
+        # labels: positive key indicators
+        labels = torch.zeros(logits.shape[0], dtype=torch.long).cuda()
+        loss = self.crit_cls(logits, labels)
+        return loss, logits, labels
 
 
 

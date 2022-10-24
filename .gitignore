@@ -120,10 +120,10 @@ venv.bak/
 ## Coin: 
 res/
 *pth
-dist_train_1.sh
-dist_train_2.sh
 *tar
 detection/output/
+detection/output_ckpt_200ep.pkl
+segmentation/output/
+segmentation/output_ckpt_200ep.pkl
 *pkl
 pretrained/
-detection/output_denseCL_200ep.pkl

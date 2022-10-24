@@ -109,6 +109,8 @@ parser.add_argument('--dense', action='store_true',
 # options for regionCL
 parser.add_argument('--cutmix', action='store_true',
                     help='use regionCL')
+parser.add_argument('--fast-moco', action='store_true',
+                    help='use local crops')
 
 
 def main():
@@ -172,7 +174,8 @@ def main_worker(gpu, ngpus_per_node, args):
     base_model = model_dict[args.arch]
     model = ModelWrapper(base_model,
         args.moco_dim, args.moco_k, args.moco_m,
-        args.moco_t, args.mlp, args.cutmix, args.dense)
+        args.moco_t, args.mlp, args.cutmix, args.dense,
+        args.fast_moco)
     print(model)
 
     if args.distributed:
@@ -230,7 +233,9 @@ def main_worker(gpu, ngpus_per_node, args):
     # Data loading code
     traindir = os.path.join(args.data, 'train')
 
-    train_dataset = lib.loader.get_dataset(traindir, args.aug_plus)
+    n_views = 2
+    if args.fast_moco: n_views += 1
+    train_dataset = lib.loader.get_dataset(traindir, args.aug_plus, n_views)
 
     if args.distributed:
         train_sampler = torch.utils.data.distributed.DistributedSampler(train_dataset)
@@ -286,26 +291,17 @@ def train(train_loader, model, optimizer, epoch, scaler, args):
         data_time.update(time.time() - end)
 
         if args.gpu is not None:
-            images[0] = images[0].cuda(args.gpu, non_blocking=True)
-            images[1] = images[1].cuda(args.gpu, non_blocking=True)
+            n_views = len(images)
+            for im_i in range(n_views):
+                images[im_i] = images[im_i].cuda(args.gpu, non_blocking=True)
 
         # compute output
         with amp.autocast(enabled=args.use_mixed_precision):
-            loss_cls, extra = model(
-                    im_q=images[0], im_k=images[1])
-
-            loss = loss_cls
-            if args.dense:
-                loss_dense = extra['loss_dense']
-                loss = 0.5 * (loss_cls + loss_dense)
-            if args.cutmix:
-                loss_cutmix = extra['loss_cutmix']
-                loss = loss + loss_cutmix
+            loss, logits, labels = model(images)
 
         # acc1/acc5 are (K+1)-way contrast classifier accuracy
         # measure accuracy and record loss
         with torch.no_grad():
-            logits, labels = extra['logits'], extra['labels']
             acc1, acc5 = accuracy(logits, labels, topk=(1, 5))
             losses.update(loss.item(), images[0].size(0))
             top1.update(acc1[0], images[0].size(0))

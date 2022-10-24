@@ -27,6 +27,10 @@ model_names = sorted(name for name in models.__dict__
     if name.islower() and not name.startswith("__")
     and callable(models.__dict__[name]))
 
+from lib.resnet import resnet50, resnet101
+model_names = ['resnet50', 'resnet101']
+model_dict = {'resnet50': resnet50, 'resnet101': resnet101}
+
 parser = argparse.ArgumentParser(description='PyTorch ImageNet Training')
 parser.add_argument('data', metavar='DIR',
                     help='path to dataset')
@@ -150,7 +154,8 @@ def main_worker(gpu, ngpus_per_node, args):
                                 world_size=args.world_size, rank=args.rank)
     # create model
     print("=> creating model '{}'".format(args.arch))
-    model = models.__dict__[args.arch](pretrained=False)
+    #  model = models.__dict__[args.arch](pretrained=False)
+    model = model_dict[args.arch]()
 
     # freeze all layers but the last fc
     if args.linear_eval:

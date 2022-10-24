@@ -7,6 +7,7 @@ The `train_net.py` script reproduces the semantic segmentation experiments on Ci
 
 1. Install [detectron2](https://github.com/facebookresearch/detectron2/blob/master/INSTALL.md).
     ```
+    $ python -m pip install cityscapesscripts timm==0.6.7
     $ git clone https://github.com/facebookresearch/detectron2.git
     $ cd detectron2
     $ git checkout 48b598b4f61fbb24
