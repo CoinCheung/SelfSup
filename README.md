@@ -50,12 +50,13 @@
 </tr>
 </tbody></table>
 
+
 Notes:   
-&#8195 &#8195   **IN-linear** means linear evaluation on imagenet.   
-&#8195 &#8195   **IN-finetune** means finetune on imagenet.   
-&#8195 &#8195   **coco-bbox** means object detection on coco.   
-&#8195 &#8195   **coco-segm** means instance segmentation on coco.  
-&#8195 &#8195   **cityscapes** means semantic segmentation on cityscapes.   
+&ensp &ensp   **IN-linear** : linear evaluation on imagenet.   
+&ensp &ensp   **IN-finetune** : finetune on imagenet.   
+&ensp &ensp   **coco-bbox** : object detection on coco.   
+&ensp &ensp   **coco-segm** : instance segmentation on coco.  
+&ensp &ensp   **cityscapes** : semantic segmentation on cityscapes.   
 
 
 ## training platform: 
