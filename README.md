@@ -72,6 +72,9 @@ Notes:
 
 
 ## raw results
+Each experiment is done 4 times, and above result in the table is the mean of the 4 results.  
+
+
 model_1:   
 &#8195;linear:  
 &#8195;&#8195;Acc@1 67.416 Acc@5 87.872  
