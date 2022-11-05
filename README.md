@@ -52,11 +52,11 @@
 
 
 Notes:   
-&ensp &ensp   **IN-linear** : linear evaluation on imagenet.   
-&ensp &ensp   **IN-finetune** : finetune on imagenet.   
-&ensp &ensp   **coco-bbox** : object detection on coco.   
-&ensp &ensp   **coco-segm** : instance segmentation on coco.  
-&ensp &ensp   **cityscapes** : semantic segmentation on cityscapes.   
+    **IN-linear** : linear evaluation on imagenet.   
+    **IN-finetune** : finetune on imagenet.   
+    **coco-bbox** : object detection on coco.   
+    **coco-segm** : instance segmentation on coco.  
+    **cityscapes** : semantic segmentation on cityscapes.   
 
 
 ## training platform: 
