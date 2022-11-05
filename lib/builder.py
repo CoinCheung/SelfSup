@@ -230,17 +230,9 @@ class ModelWrapper(nn.Module):
                     for ql in q_local]
             loss_fast_moco = sum(loss_fast_moco) / len(loss_fast_moco)
             loss = loss + loss_fast_moco
-            #  im_local = images[2]
-            #  q_local = self.encoder_q.forward_pretrain(im_local)[0]
-            #  q_local = nn.functional.normalize(q_local, dim=1)
-            #  loss_local = self.info_nce(q_local, k, self.queue, self.T)[0]
-            #  loss = loss + loss_local
 
         # dequeue and enqueue
         self._dequeue_and_enqueue(k, dense_k)
-
-        #  logits = torch.empty(n, 6).float().cuda()
-        #  labels = torch.zeros(n).long().cuda()
 
         return loss, logits, labels
 
