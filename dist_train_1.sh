@@ -32,8 +32,8 @@ BS=2048
 # python main_finetune.py -a $ARCH --lr $LR --batch-size $BS --pretrained $PRETRAINED --dist-url $URL --multiprocessing-distributed --world-size $WORD_SIZE --rank $RANK --linear-eval $DATAPATH
 
 # finetune
-# python main_finetune.py -a $ARCH --lr 0.4 --weight-decay 0.0001 --batch-size 1024 --cos --pretrained $PRETRAINED --dist-url $URL --multiprocessing-distributed --world-size $WORD_SIZE --rank $RANK $DATAPATH
+python main_finetune.py -a $ARCH --lr 0.4 --weight-decay 0.0001 --batch-size 1024 --cos --pretrained $PRETRAINED --dist-url $URL --multiprocessing-distributed --world-size $WORD_SIZE --rank $RANK $DATAPATH
 
 ## finetune scratch
-python main_finetune.py -a $ARCH --lr 0.4 --weight-decay 0.0001 --batch-size 1024 --cos --dist-url $URL --multiprocessing-distributed --world-size $WORD_SIZE --rank $RANK $DATAPATH
+# python main_finetune.py -a $ARCH --lr 0.4 --weight-decay 0.0001 --batch-size 1024 --cos --dist-url $URL --multiprocessing-distributed --world-size $WORD_SIZE --rank $RANK $DATAPATH
 

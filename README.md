@@ -1,6 +1,8 @@
 
 ## experiment results
 
+Each model is train for 200 epoch.  
+
 <table><tbody>
 <!-- START TABLE -->
 <!-- TABLE HEADER -->
@@ -41,12 +43,12 @@
 </tr>
 
 <tr><td align="left"><a href="https://arxiv.org/abs/2011.09157">+dense</a></td>
-<td align="center">200</td>
-<td align="center">&#x2713</td>
-<td align="center">&#x2713</td>
-<td align="center">&#x2713</td>
-<td align="center"></td>
-<td align="center"><a href="https://github.com/CoinCheung/DenseCL/releases/download/v0.0.1/regioncl_r101_checkpoint_0199.pth.tar">model_4</a></td>
+<td align="center">68.46</td>
+<td align="center">77.36</td>
+<td align="center">39.89</td>
+<td align="center">34.81</td>
+<td align="center">78.62</td>
+<td align="center"><a href="https://github.com/CoinCheung/SelfSup/releases/download/0.0.0/selfsup-model_4.tar">model_4</a></td>
 </tr>
 </tbody></table>
 
@@ -156,3 +158,28 @@ model_3:
 
 
 model_4: 
+&#8195;linear:
+&#8195;&#8195;Acc@1 68.390 Acc@5 88.410
+&#8195;&#8195;Acc@1 68.428 Acc@5 88.450
+&#8195;&#8195;Acc@1 68.514 Acc@5 88.496
+&#8195;&#8195;Acc@1 68.540 Acc@5 88.450
+&#8195;finetune:
+&#8195;&#8195;Acc@1 77.292 Acc@5 93.660
+&#8195;&#8195;Acc@1 77.358 Acc@5 93.666
+&#8195;&#8195;Acc@1 77.414 Acc@5 93.578
+&#8195;&#8195;Acc@1 77.428 Acc@5 93.730
+&#8195;coco:
+&#8195;&#8195;bbox: 39.7979,59.3019,43.0861,23.6279,44.9279,53.4377
+&#8195;&#8195;segm: 34.7913,56.1294,37.1104,16.7007,38.3945,51.9054
+&#8195;&#8195;bbox: 40.0450,59.7000,43.2372,23.2499,44.8962,54.6081
+&#8195;&#8195;segm: 34.9896,56.4153,37.2329,16.5262,38.5145,53.0326
+&#8195;&#8195;bbox: 39.8167,59.3492,42.7212,22.1697,45.1557,53.7540
+&#8195;&#8195;segm: 34.7007,56.1931,36.8089,15.4148,38.4096,52.8130
+&#8195;&#8195;bbox: 39.9220,59.2469,43.4722,23.0249,45.2309,53.8936
+&#8195;&#8195;segm: 34.7776,56.0887,37.2089,16.1729,38.5654,52.2489
+&#8195;deeplab:
+&#8195;&#8195;78.9501,59.7787,90.5183,78.4602
+&#8195;&#8195;78.2653,58.7325,90.4671,78.4071
+&#8195;&#8195;78.5883,59.5350,90.5502,78.3455
+&#8195;&#8195;78.7013,59.0640,90.6147,78.4037
+
