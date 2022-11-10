@@ -127,3 +127,8 @@ segmentation/output/
 segmentation/output_ckpt_200ep.pkl
 *pkl
 pretrained/
+lib/builder_aux.py
+lib/resnet_tmp.py
+lib/model_builder.py
+lib/cutmix_aux.py
+

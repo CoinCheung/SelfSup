@@ -15,7 +15,7 @@ RANK=0
 EPOCHS=200
 LR=0.12 # use 4 nodes
 BATCHSIZE=256 # bs of 1 node
-# time python main_pretrain.py -a $ARCH --lr $LR --batch-size $BATCHSIZE --epochs $EPOCHS --world-size $WORD_SIZE --rank $RANK --dist-url $URL --multiprocessing-distributed --use-mixed-precision --mlp --moco-t 0.2 --aug-plus --cos --fast-moco \
+# time python main_pretrain.py -a $ARCH --lr $LR --batch-size $BATCHSIZE --epochs $EPOCHS --world-size $WORD_SIZE --rank $RANK --dist-url $URL --multiprocessing-distributed --use-mixed-precision --mlp --moco-t 0.2 --aug-plus --cos --fast-moco --cutmix --dense \
 # $DATAPATH
 
 # linear eval and finetune
@@ -29,8 +29,11 @@ LR=240.0
 BS=2048
 
 # linear eval
-python main_finetune.py -a $ARCH --lr $LR --batch-size $BS --pretrained $PRETRAINED --dist-url $URL --multiprocessing-distributed --world-size $WORD_SIZE --rank $RANK --linear-eval $DATAPATH
+# python main_finetune.py -a $ARCH --lr $LR --batch-size $BS --pretrained $PRETRAINED --dist-url $URL --multiprocessing-distributed --world-size $WORD_SIZE --rank $RANK --linear-eval $DATAPATH
 
 # finetune
-# python main_finetune.py -a $ARCH --lr 0.4 --weight-decay 0.0001 --batch-size 1024 --cos --pretrained $PRETRAINED --dist-url $URL --multiprocessing-distributed --world-size $WORD_SIZE --rank $RANK $DATAPATH
+python main_finetune.py -a $ARCH --lr 0.4 --weight-decay 0.0001 --batch-size 1024 --cos --pretrained $PRETRAINED --dist-url $URL --multiprocessing-distributed --world-size $WORD_SIZE --rank $RANK $DATAPATH
+
+## finetune scratch
+# python main_finetune.py -a $ARCH --lr 0.4 --weight-decay 0.0001 --batch-size 1024 --cos --dist-url $URL --multiprocessing-distributed --world-size $WORD_SIZE --rank $RANK $DATAPATH
 

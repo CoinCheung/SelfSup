@@ -22,12 +22,14 @@ import torchvision.models as models
 
 import lib.loader
 from lib.builder import ModelWrapper
+#  from lib.builder_aux import TrainWrapper
 
 model_names = sorted(name for name in models.__dict__
     if name.islower() and not name.startswith("__")
     and callable(models.__dict__[name]))
 
 from lib.resnet import resnet50, resnet101
+#  from lib.resnet_tmp import resnet50, resnet101
 model_names = ['resnet50', 'resnet101']
 model_dict = {'resnet50': resnet50, 'resnet101': resnet101}
 
@@ -109,8 +111,12 @@ parser.add_argument('--dense', action='store_true',
 # options for regionCL
 parser.add_argument('--cutmix', action='store_true',
                     help='use regionCL')
+# options for fast-moco
 parser.add_argument('--fast-moco', action='store_true',
                     help='use local crops')
+# options for deep-supervision
+parser.add_argument('--aux-head', action='store_true',
+                    help='use aux losses')
 
 
 def main():
@@ -172,10 +178,12 @@ def main_worker(gpu, ngpus_per_node, args):
     # create model
     print("=> creating model '{}'".format(args.arch))
     base_model = model_dict[args.arch]
-    model = ModelWrapper(base_model,
+
+    #  model = ModelWrapper(base_model,
+    model = TrainWrapper(base_model,
         args.moco_dim, args.moco_k, args.moco_m,
         args.moco_t, args.mlp, args.cutmix, args.dense,
-        args.fast_moco)
+        args.fast_moco, args.aux_head)
     print(model)
 
     if args.distributed:
