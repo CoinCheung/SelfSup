@@ -54,11 +54,16 @@ Each model is train for 200 epoch.
 
 
 Notes:   
-&#8195;&#8195;**IN-linear** : linear evaluation on imagenet.   
-&#8195;&#8195;**IN-finetune** : finetune on imagenet.   
-&#8195;&#8195;**coco-bbox** : object detection on coco.   
-&#8195;&#8195;**coco-segm** : instance segmentation on coco.  
-&#8195;&#8195;**cityscapes** : semantic segmentation on cityscapes.   
+&#8195;&#8195;**IN-linear:**  linear evaluation on imagenet.   
+&#8195;&#8195;**IN-finetune:**  finetune on imagenet.   
+&#8195;&#8195;**coco-bbox:**  object detection on coco.   
+&#8195;&#8195;**coco-segm:**  instance segmentation on coco.  
+&#8195;&#8195;**cityscapes:**  semantic segmentation on cityscapes.   
+&nbsp;
+
+&#8195;&#8195;**fast-moco:**  [Fast-MoCo: Boost Momentum-based Contrastive Learning with Combinatorial Patches](https://arxiv.org/abs/2207.08220)  
+&#8195;&#8195;**cutmix:**  [RegionCL: Can Simple Region Swapping Contribute to Contrastive Learning?](https://arxiv.org/abs/2111.12309)  
+&#8195;&#8195;**dense:**  [Dense Contrastive Learning for Self-Supervised Visual Pre-Training](https://arxiv.org/abs/2011.09157)  
 
 
 ## training platform: 
@@ -182,4 +187,30 @@ model_4:
 &#8195;&#8195;78.2653,58.7325,90.4671,78.4071  
 &#8195;&#8195;78.5883,59.5350,90.5502,78.3455  
 &#8195;&#8195;78.7013,59.0640,90.6147,78.4037  
+
+model_4: 
+&#8195;linear:
+&#8195;&#8195;Acc@1 68.390 Acc@5 88.410
+&#8195;&#8195;Acc@1 68.428 Acc@5 88.450
+&#8195;&#8195;Acc@1 68.514 Acc@5 88.496
+&#8195;&#8195;Acc@1 68.540 Acc@5 88.450
+&#8195;finetune:
+&#8195;&#8195;Acc@1 77.292 Acc@5 93.660
+&#8195;&#8195;Acc@1 77.358 Acc@5 93.666
+&#8195;&#8195;Acc@1 77.414 Acc@5 93.578
+&#8195;&#8195;Acc@1 77.428 Acc@5 93.730
+&#8195;coco:
+&#8195;&#8195;bbox: 39.7979,59.3019,43.0861,23.6279,44.9279,53.4377
+&#8195;&#8195;segm: 34.7913,56.1294,37.1104,16.7007,38.3945,51.9054
+&#8195;&#8195;bbox: 40.0450,59.7000,43.2372,23.2499,44.8962,54.6081
+&#8195;&#8195;segm: 34.9896,56.4153,37.2329,16.5262,38.5145,53.0326
+&#8195;&#8195;bbox: 39.8167,59.3492,42.7212,22.1697,45.1557,53.7540
+&#8195;&#8195;segm: 34.7007,56.1931,36.8089,15.4148,38.4096,52.8130
+&#8195;&#8195;bbox: 39.9220,59.2469,43.4722,23.0249,45.2309,53.8936
+&#8195;&#8195;segm: 34.7776,56.0887,37.2089,16.1729,38.5654,52.2489
+&#8195;deeplab:
+&#8195;&#8195;78.9501,59.7787,90.5183,78.4602
+&#8195;&#8195;78.2653,58.7325,90.4671,78.4071
+&#8195;&#8195;78.5883,59.5350,90.5502,78.3455
+&#8195;&#8195;78.7013,59.0640,90.6147,78.4037
 

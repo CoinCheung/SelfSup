@@ -13,9 +13,9 @@ URL='tcp://10.128.61.6:20004'
 WORD_SIZE=4
 RANK=0
 EPOCHS=200
-LR=0.12 # use 4 nodes
+LR=0.12 # use 4 nodes, 4 x 256 = 1024
 BATCHSIZE=256 # bs of 1 node
-# time python main_pretrain.py -a $ARCH --lr $LR --batch-size $BATCHSIZE --epochs $EPOCHS --world-size $WORD_SIZE --rank $RANK --dist-url $URL --multiprocessing-distributed --use-mixed-precision --mlp --moco-t 0.2 --aug-plus --cos --fast-moco --cutmix --dense \
+# time python main_pretrain.py -a $ARCH --lr $LR --batch-size $BATCHSIZE --epochs $EPOCHS --world-size $WORD_SIZE --rank $RANK --dist-url $URL --multiprocessing-distributed --use-mixed-precision --mlp --moco-t 0.2 --aug-plus --cos --fast-moco --cutmix --dense --aux-head \
 # $DATAPATH
 
 # linear eval and finetune
@@ -24,15 +24,21 @@ WORD_SIZE=1
 RANK=0
 DATAPATH=/data/zzy/.datasets/imagenet/
 PRETRAINED=./checkpoint_0199.pth.tar
+# PRETRAINED=./pretrained/r50_checkpoint_0199_mocov2_cutmix.pth.tar
 ARCH=resnet50
 LR=240.0
 BS=2048
 
 # linear eval
-# python main_finetune.py -a $ARCH --lr $LR --batch-size $BS --pretrained $PRETRAINED --dist-url $URL --multiprocessing-distributed --world-size $WORD_SIZE --rank $RANK --linear-eval $DATAPATH
+python main_finetune.py -a $ARCH --lr $LR --batch-size $BS --pretrained $PRETRAINED --dist-url $URL --multiprocessing-distributed --world-size $WORD_SIZE --rank $RANK --linear-eval $DATAPATH
 
 # finetune
-python main_finetune.py -a $ARCH --lr 0.4 --weight-decay 0.0001 --batch-size 1024 --cos --pretrained $PRETRAINED --dist-url $URL --multiprocessing-distributed --world-size $WORD_SIZE --rank $RANK $DATAPATH
+# python main_finetune.py -a $ARCH --lr 0.4 --weight-decay 0.0001 --batch-size 1024 --cos --pretrained $PRETRAINED --dist-url $URL --multiprocessing-distributed --world-size $WORD_SIZE --rank $RANK $DATAPATH
+
+
+
+
+
 
 ## finetune scratch
 # python main_finetune.py -a $ARCH --lr 0.4 --weight-decay 0.0001 --batch-size 1024 --cos --dist-url $URL --multiprocessing-distributed --world-size $WORD_SIZE --rank $RANK $DATAPATH

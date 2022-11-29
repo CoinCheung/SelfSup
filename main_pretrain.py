@@ -21,15 +21,15 @@ import torch.cuda.amp as amp
 import torchvision.models as models
 
 import lib.loader
-from lib.builder import ModelWrapper
-#  from lib.builder_aux import TrainWrapper
+#  from lib.builder import ModelWrapper
+from lib.builder_aux import TrainWrapper
 
 model_names = sorted(name for name in models.__dict__
     if name.islower() and not name.startswith("__")
     and callable(models.__dict__[name]))
 
-from lib.resnet import resnet50, resnet101
-#  from lib.resnet_tmp import resnet50, resnet101
+#  from lib.resnet import resnet50, resnet101
+from lib.resnet_tmp import resnet50, resnet101
 model_names = ['resnet50', 'resnet101']
 model_dict = {'resnet50': resnet50, 'resnet101': resnet101}
 
