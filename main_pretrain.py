@@ -111,6 +111,9 @@ parser.add_argument('--dense', action='store_true',
 # options for regionCL
 parser.add_argument('--cutmix', action='store_true',
                     help='use regionCL')
+# options for mixup
+parser.add_argument('--mixup', action='store_true',
+                    help='use mixup proposed in reco')
 # options for fast-moco
 parser.add_argument('--fast-moco', action='store_true',
                     help='use local crops')
@@ -182,8 +185,8 @@ def main_worker(gpu, ngpus_per_node, args):
     #  model = ModelWrapper(base_model,
     model = TrainWrapper(base_model,
         args.moco_dim, args.moco_k, args.moco_m,
-        args.moco_t, args.mlp, args.cutmix, args.dense,
-        args.fast_moco, args.aux_head)
+        args.moco_t, args.mlp, args.cutmix, args.mixup,
+        args.dense, args.fast_moco, args.aux_head)
     print(model)
 
     if args.distributed:
@@ -243,6 +246,7 @@ def main_worker(gpu, ngpus_per_node, args):
 
     n_views = 2
     if args.fast_moco: n_views += 1
+    if args.mixup: n_views += 1
     train_dataset = lib.loader.get_dataset(traindir, args.aug_plus, n_views)
 
     if args.distributed:

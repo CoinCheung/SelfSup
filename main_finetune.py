@@ -156,6 +156,7 @@ def main_worker(gpu, ngpus_per_node, args):
     print("=> creating model '{}'".format(args.arch))
     #  model = models.__dict__[args.arch](pretrained=False)
     model = model_dict[args.arch]()
+    #  model = model.to(memory_format=torch.channels_last)
 
     # freeze all layers but the last fc
     if args.linear_eval:
@@ -352,6 +353,7 @@ def train(train_loader, model, criterion, optimizer, epoch, scaler, args):
         data_time.update(time.time() - end)
 
         if args.gpu is not None:
+            #  images = images.to(memory_format=torch.channels_last)
             images = images.cuda(args.gpu, non_blocking=True)
             target = target.cuda(args.gpu, non_blocking=True)
 

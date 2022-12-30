@@ -131,4 +131,6 @@ lib/builder_aux.py
 lib/resnet_tmp.py
 lib/model_builder.py
 lib/cutmix_aux.py
+useless.py
+log*txt
 
