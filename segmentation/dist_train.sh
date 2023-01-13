@@ -17,7 +17,7 @@ python convert-pretrain-to-detectron2.py ../checkpoint_0199.pth.tar ./output_ckp
 # export CUDA_VISIBLE_DEVICES=4,5,6,7
 # export CUDA_VISIBLE_DEVICES=0,1,2,3
 export CUDA_VISIBLE_DEVICES=0,1,6,7
-# export CUDA_VISIBLE_DEVICES=1,2,3,7
+# export CUDA_VISIBLE_DEVICES=0,1,2,7
 NGPUS=4
 PORT=44333
 

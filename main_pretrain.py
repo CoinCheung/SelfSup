@@ -29,9 +29,9 @@ model_names = sorted(name for name in models.__dict__
     and callable(models.__dict__[name]))
 
 #  from lib.resnet import resnet50, resnet101
-from lib.resnet_tmp import resnet50, resnet101
-model_names = ['resnet50', 'resnet101']
-model_dict = {'resnet50': resnet50, 'resnet101': resnet101}
+from lib.resnet_tmp import resnet18, resnet50, resnet101
+model_names = ['resnet18', 'resnet50', 'resnet101']
+model_dict = {'resnet18': resnet18, 'resnet50': resnet50, 'resnet101': resnet101}
 
 parser = argparse.ArgumentParser(description='PyTorch ImageNet Training')
 parser.add_argument('data', metavar='DIR',
@@ -67,6 +67,8 @@ parser.add_argument('-p', '--print-freq', default=100, type=int,
                     metavar='N', help='print frequency (default: 10)')
 parser.add_argument('--resume', default='', type=str, metavar='PATH',
                     help='path to latest checkpoint (default: none)')
+parser.add_argument('--ckpt_prefix', default='', type=str,
+                    help='prefxi of checkpoint (default: empty str)')
 parser.add_argument('--world-size', default=-1, type=int,
                     help='number of nodes for distributed training')
 parser.add_argument('--rank', default=-1, type=int,
@@ -246,6 +248,7 @@ def main_worker(gpu, ngpus_per_node, args):
 
     n_views = 2
     if args.fast_moco: n_views += 1
+    if args.cutmix: n_views += 1
     if args.mixup: n_views += 1
     train_dataset = lib.loader.get_dataset(traindir, args.aug_plus, n_views)
 
@@ -271,14 +274,17 @@ def main_worker(gpu, ngpus_per_node, args):
 
         n_ckpt_period = 20
         if not args.multiprocessing_distributed or (args.multiprocessing_distributed
-                and args.rank % ngpus_per_node == 0) and ((epoch + 1) % n_ckpt_period == 0):
+                and args.rank % ngpus_per_node == 0):
+            if (epoch + 1) % n_ckpt_period != 0 and (epoch + 1) != args.epochs: continue
             if epoch > args.epochs - 10: n_ckpt_period = 1
+            save_name = 'checkpoint_{:04d}.pth.tar'.format(epoch)
+            if args.ckpt_prefix != '': save_name = f'{args.ckpt_prefix}_{save_name}'
             save_checkpoint({
                 'epoch': epoch + 1,
                 'arch': args.arch,
                 'state_dict': model.state_dict(),
                 'optimizer' : optimizer.state_dict(),
-            }, is_best=False, filename='checkpoint_{:04d}.pth.tar'.format(epoch))
+            }, is_best=False, filename=save_name)
 
 
 #  def train(train_loader, model, criterion, criterion_dense, optimizer, epoch, args):

@@ -16,7 +16,7 @@ RANK=0
 EPOCHS=200
 LR=0.12 # use 4 nodes, 4 x 256 = 1024
 BATCHSIZE=256 # bs of 1 node
-time python main_pretrain.py -a $ARCH --lr $LR --batch-size $BATCHSIZE --epochs $EPOCHS --world-size $WORD_SIZE --rank $RANK --dist-url $URL --multiprocessing-distributed --use-mixed-precision --mlp --moco-t 0.2 --aug-plus --cos --fast-moco --cutmix \
+time python main_pretrain.py -a $ARCH --lr $LR --batch-size $BATCHSIZE --epochs $EPOCHS --world-size $WORD_SIZE --rank $RANK --dist-url $URL --multiprocessing-distributed --use-mixed-precision --mlp --moco-t 0.2 --aug-plus --cos --fast-moco --cutmix --mixup \
 $DATAPATH
 
 # linear eval and finetune

@@ -63,13 +63,14 @@ Notes:
 
 &#8195;&#8195;**fast-moco:**  [Fast-MoCo: Boost Momentum-based Contrastive Learning with Combinatorial Patches](https://arxiv.org/abs/2207.08220)  
 &#8195;&#8195;**cutmix:**  [RegionCL: Can Simple Region Swapping Contribute to Contrastive Learning?](https://arxiv.org/abs/2111.12309)  
+&#8195;&#8195;**mixup:**  [mixup: Beyond Empirical Risk Minimization](https://arxiv.org/abs/1710.09412)  
 &#8195;&#8195;**dense:**  [Dense Contrastive Learning for Self-Supervised Visual Pre-Training](https://arxiv.org/abs/2011.09157)  
 
 
 ## training platform: 
 
 * ubuntu 18.04
-* nvidia Tesla T4 gpu, driver 450.80.02
+* 32 nvidia Tesla T4 gpu, driver 450.80.02
 * cuda 11.3
 * cudnn 8
 * miniconda python 3.8.8

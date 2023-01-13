@@ -27,9 +27,9 @@ model_names = sorted(name for name in models.__dict__
     if name.islower() and not name.startswith("__")
     and callable(models.__dict__[name]))
 
-from lib.resnet import resnet50, resnet101
-model_names = ['resnet50', 'resnet101']
-model_dict = {'resnet50': resnet50, 'resnet101': resnet101}
+from lib.resnet_tmp import resnet18, resnet50, resnet101
+model_names = ['resnet18', 'resnet50', 'resnet101']
+model_dict = {'resnet18': resnet18, 'resnet50': resnet50, 'resnet101': resnet101}
 
 parser = argparse.ArgumentParser(description='PyTorch ImageNet Training')
 parser.add_argument('data', metavar='DIR',
