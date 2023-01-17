@@ -27,9 +27,9 @@ model_names = sorted(name for name in models.__dict__
     if name.islower() and not name.startswith("__")
     and callable(models.__dict__[name]))
 
-from lib.resnet import resnet50, resnet101
-model_names = ['resnet50', 'resnet101']
-model_dict = {'resnet50': resnet50, 'resnet101': resnet101}
+from lib.resnet import resnet18, resnet50, resnet101
+model_names = ['resnet18', 'resnet50', 'resnet101']
+model_dict = {'resnet18': resnet18, 'resnet50': resnet50, 'resnet101': resnet101}
 
 parser = argparse.ArgumentParser(description='PyTorch ImageNet Training')
 parser.add_argument('data', metavar='DIR',
@@ -156,6 +156,7 @@ def main_worker(gpu, ngpus_per_node, args):
     print("=> creating model '{}'".format(args.arch))
     #  model = models.__dict__[args.arch](pretrained=False)
     model = model_dict[args.arch]()
+    #  model = model.to(memory_format=torch.channels_last)
 
     # freeze all layers but the last fc
     if args.linear_eval:
@@ -176,9 +177,9 @@ def main_worker(gpu, ngpus_per_node, args):
             state_dict = checkpoint['state_dict']
             for k in list(state_dict.keys()):
                 # retain only encoder_q up to before the embedding layer
-                if k.startswith('module.encoder_q') and not k.startswith('module.encoder_q.fc'):
+                if k.startswith('module.encoder_q.backbone.') and not k.startswith('module.encoder_q.fc'):
                     # remove prefix
-                    state_dict[k[len("module.encoder_q."):]] = state_dict[k]
+                    state_dict[k[len("module.encoder_q.backbone."):]] = state_dict[k]
                 # delete renamed or unused k
                 del state_dict[k]
 
@@ -352,6 +353,7 @@ def train(train_loader, model, criterion, optimizer, epoch, scaler, args):
         data_time.update(time.time() - end)
 
         if args.gpu is not None:
+            #  images = images.to(memory_format=torch.channels_last)
             images = images.cuda(args.gpu, non_blocking=True)
             target = target.cuda(args.gpu, non_blocking=True)
 
