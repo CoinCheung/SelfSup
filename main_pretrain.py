@@ -272,7 +272,7 @@ def main_worker(gpu, ngpus_per_node, args):
         # train for one epoch
         train(train_loader, model, optimizer, epoch, scaler, args)
 
-        n_ckpt_period = 20
+        n_ckpt_period = 5
         if not args.multiprocessing_distributed or (args.multiprocessing_distributed
                 and args.rank % ngpus_per_node == 0):
             if (epoch + 1) % n_ckpt_period != 0 and (epoch + 1) != args.epochs: continue
@@ -287,6 +287,7 @@ def main_worker(gpu, ngpus_per_node, args):
             }, is_best=False, filename=save_name)
 
 
+
 #  def train(train_loader, model, criterion, criterion_dense, optimizer, epoch, args):
 def train(train_loader, model, optimizer, epoch, scaler, args):
     batch_time = AverageMeter('Time', ':6.3f')
@@ -299,6 +300,7 @@ def train(train_loader, model, optimizer, epoch, scaler, args):
         [batch_time, data_time, losses, top1, top5],
         prefix="Epoch: [{}]".format(epoch))
 
+    to_tensor = lib.loader.ToTensorBatchGPU()
 
     # switch to train mode
     model.train()
@@ -312,6 +314,7 @@ def train(train_loader, model, optimizer, epoch, scaler, args):
             n_views = len(images)
             for im_i in range(n_views):
                 images[im_i] = images[im_i].cuda(args.gpu, non_blocking=True)
+                images[im_i] = to_tensor(images[im_i])
 
         # compute output
         with amp.autocast(enabled=args.use_mixed_precision):

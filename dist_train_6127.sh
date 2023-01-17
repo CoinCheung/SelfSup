@@ -1,7 +1,6 @@
 
 export CUDA_VISIBLE_DEVICES=0,1,2,3,4,5,6,7
 
-rm log_linear_6127*txt log_finetune_6127*txt detection/log_det_6127*txt
 
 # for pretrain
 ARCH=resnet18
@@ -13,7 +12,10 @@ RANK=0
 EPOCHS=200
 LR=0.12 # use 1 nodes, (1 x 1024 / 256) x 0.03 = 0.12
 BATCHSIZE=1024 # bs of 1 node
-time python main_pretrain.py -j 64 --ckpt_prefix r18 -a $ARCH --lr $LR --batch-size $BATCHSIZE --epochs $EPOCHS --world-size $WORD_SIZE --rank $RANK --dist-url $URL --multiprocessing-distributed --use-mixed-precision --mlp --moco-t 0.2 --aug-plus --cos --fast-moco --cutmix --mixup --dense $DATAPATH
+time python main_pretrain.py -j 64 --ckpt_prefix r18 -a $ARCH --lr $LR --batch-size $BATCHSIZE --epochs $EPOCHS --world-size $WORD_SIZE --rank $RANK --dist-url $URL --multiprocessing-distributed --use-mixed-precision --mlp --moco-t 0.2 --aug-plus --cos --fast-moco --cutmix --mixup --dense \
+--resume r18_checkpoint_0099.pth.tar \
+    $DATAPATH
+
 
 # # linear eval and finetune
 # URL='tcp://localhost:20021'
