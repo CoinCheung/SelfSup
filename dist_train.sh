@@ -13,7 +13,7 @@ RANK=$1
 EPOCHS=200
 LR=0.12 # use 4 nodes, 4 x 256 = 1024
 BATCHSIZE=256 # bs of 1 node
-time python main_pretrain.py -a $ARCH --lr $LR --batch-size $BATCHSIZE --epochs $EPOCHS --world-size $WORD_SIZE --rank $RANK --dist-url $URL --multiprocessing-distributed --use-mixed-precision --mlp --moco-t 0.2 --aug-plus --cos --fast-moco --cutmix --mixup --dense $DATAPATH
+time python main_pretrain.py -a $ARCH --lr $LR --batch-size $BATCHSIZE --epochs $EPOCHS --world-size $WORD_SIZE --rank $RANK --dist-url $URL --multiprocessing-distributed --use-mixed-precision --mlp --moco-t 0.2 --aug-plus --cos --fast-moco --cutmix --mixup --dense --lsr 0.1 $DATAPATH
 
 # linear eval and finetune
 URL='tcp://localhost:20021'
@@ -25,7 +25,7 @@ ARCH=resnet50
 LR=240.0
 BS=2048
 
-# sleep 120
+sleep 120
 
 # linear eval
 time python main_finetune.py -a $ARCH --lr $LR --batch-size $BS --pretrained $PRETRAINED --dist-url $URL --multiprocessing-distributed --world-size $WORD_SIZE --rank $RANK --linear-eval $DATAPATH 2>&1 | tee log_linear_$1.txt

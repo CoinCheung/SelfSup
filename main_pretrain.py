@@ -122,6 +122,9 @@ parser.add_argument('--fast-moco', action='store_true',
 # options for deep-supervision
 parser.add_argument('--aux-head', action='store_true',
                     help='use aux losses')
+# options for label-smooth
+parser.add_argument('--lsr', default=0.0, type=float,
+                    help='label smoothing (default: 0.0)')
 
 
 def main():
@@ -188,7 +191,7 @@ def main_worker(gpu, ngpus_per_node, args):
     model = TrainWrapper(base_model,
         args.moco_dim, args.moco_k, args.moco_m,
         args.moco_t, args.mlp, args.cutmix, args.mixup,
-        args.dense, args.fast_moco, args.aux_head)
+        args.dense, args.fast_moco, args.aux_head, args.lsr)
     print(model)
 
     if args.distributed:
@@ -272,7 +275,7 @@ def main_worker(gpu, ngpus_per_node, args):
         # train for one epoch
         train(train_loader, model, optimizer, epoch, scaler, args)
 
-        n_ckpt_period = 5
+        n_ckpt_period = 10
         if not args.multiprocessing_distributed or (args.multiprocessing_distributed
                 and args.rank % ngpus_per_node == 0):
             if (epoch + 1) % n_ckpt_period != 0 and (epoch + 1) != args.epochs: continue
