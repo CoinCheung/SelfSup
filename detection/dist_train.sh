@@ -3,8 +3,8 @@ export GLOO_SOCKET_IFNAME=eth0
 
 CKPT=../checkpoint_0199.pth.tar
 # CONFIG=configs/pascal_voc_R_50_C4_24k_moco.yaml
-CONFIG=configs/coco_R_50_C4_1x_moco.yaml
-# CONFIG=configs/coco_R_50_FPN_1x_moco.yaml
+# CONFIG=configs/coco_R_50_C4_1x_moco.yaml
+CONFIG=configs/coco_R_50_FPN_1x_moco.yaml
 # CONFIG=configs/coco_R_101_C4_1x_moco.yaml
 
 # export CUDA_VISIBLE_DEVICES=0,1,2,3

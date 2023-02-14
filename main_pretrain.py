@@ -122,9 +122,9 @@ parser.add_argument('--fast-moco', action='store_true',
 # options for deep-supervision
 parser.add_argument('--aux-head', action='store_true',
                     help='use aux losses')
-# options for label-smooth
-parser.add_argument('--lsr', default=0.0, type=float,
-                    help='label smoothing (default: 0.0)')
+# options for mae
+parser.add_argument('--mae', action='store_true',
+                    help='use mae')
 
 
 def main():
@@ -191,7 +191,7 @@ def main_worker(gpu, ngpus_per_node, args):
     model = TrainWrapper(base_model,
         args.moco_dim, args.moco_k, args.moco_m,
         args.moco_t, args.mlp, args.cutmix, args.mixup,
-        args.dense, args.fast_moco, args.aux_head, args.lsr)
+        args.dense, args.fast_moco, args.aux_head, args.mae)
     print(model)
 
     if args.distributed:
@@ -253,6 +253,7 @@ def main_worker(gpu, ngpus_per_node, args):
     if args.fast_moco: n_views += 1
     if args.cutmix: n_views += 1
     if args.mixup: n_views += 1
+    if args.mae: n_views += 1
     train_dataset = lib.loader.get_dataset(traindir, args.aug_plus, n_views)
 
     if args.distributed:

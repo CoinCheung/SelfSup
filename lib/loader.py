@@ -105,9 +105,16 @@ def get_dataset(traindir, aug_plus=True, n_views=2):
             to_torch_func
         ]
 
+    #  with open('/data/zzy/.datasets/combine/dup_fnames.txt', 'r') as fr:
+    #      lines = fr.read().splitlines()
+    #      dup_lines = set([osp.join(traindir, el) for el in lines])
+    #  def is_valid_file_func(pth):
+    #      if pth in dup_lines: return False
+    #      return True
     train_dataset = datasets.ImageFolder(
         traindir,
         #  TwoCropsTransform(transforms.Compose(augmentation)))
-        NCropsTransform(transforms.Compose(augmentation), n_crops=n_views)
+        NCropsTransform(transforms.Compose(augmentation), n_crops=n_views),
+        #  is_valid_file=is_valid_file_func
     )
     return train_dataset
