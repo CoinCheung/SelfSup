@@ -25,11 +25,13 @@ class SparseConv2d(nn.Conv2d):
         '''
         if isinstance(x, torch.Tensor): return super().forward(x)
         x, mask = x
+        mask_ = mask.expand_as(x).detach()
+        x[~mask_] = 0.
         out = super().forward(x)
         sh, sw = self.stride
         mask = mask[:, :, ::sh, ::sw]
-        mask_ = mask.expand_as(out)
-        out[~mask_] = 0.
+        #  mask_ = mask.expand_as(out)
+        #  out[~mask_] = 0.
         return out, mask
 
 
@@ -81,12 +83,14 @@ class SparseMaxPool2d(nn.MaxPool2d):
         '''
         if isinstance(x, torch.Tensor): return super().forward(x)
         x, mask = x
+        mask_ = mask.expand_as(x).detach()
+        x[~mask_] = -torch.inf
         out = super().forward(x)
         sh, sw = self.stride, self.stride
         if isinstance(self.stride, (tuple, list)): sh, sw = self.stride
         mask = mask[:, :, ::sh, ::sw]
-        mask_ = mask.expand_as(out)
-        out[~mask_] = 0.
+        #  mask_ = mask.expand_as(out)
+        #  out[~mask_] = 0.
         return out, mask
 
 
@@ -110,6 +114,7 @@ class SparseReLU(nn.ReLU):
 if __name__ == '__main__':
     conv = SparseConv2d(3, 32, 3, 2, 1)
     bn = SparseBatchNorm2d(32)
+    maxpool = SparseMaxPool2d(3, 2, 1)
     inten = torch.randn(2, 3, 224, 224)
     mask = torch.randint(0, 1, (2, 1, 224, 224)).bool()
 
@@ -119,4 +124,7 @@ if __name__ == '__main__':
     out2 = conv(inten)
     out2 = bn(out2)
     print(out2.size())
+
+    out3 = maxpool(inten)
+    print(out3.size())
 

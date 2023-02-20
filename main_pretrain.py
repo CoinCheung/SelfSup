@@ -54,6 +54,8 @@ parser.add_argument('-b', '--batch-size', default=256, type=int,
                     help='mini-batch size (default: 256), this is the total '
                          'batch size of all GPUs on the current node when '
                          'using Data Parallel or Distributed Data Parallel')
+parser.add_argument('--optim', '--optimizer', default='SGD', type=str,
+                    metavar='optimizer', help='optimizer type', dest='optim')
 parser.add_argument('--lr', '--learning-rate', default=0.03, type=float,
                     metavar='LR', help='initial learning rate', dest='lr')
 parser.add_argument('--schedule', default=[120, 160], nargs='*', type=int,
@@ -222,9 +224,16 @@ def main_worker(gpu, ngpus_per_node, args):
         # this code only supports DistributedDataParallel.
         raise NotImplementedError("Only DistributedDataParallel is supported.")
 
-    optimizer = torch.optim.SGD(model.parameters(), args.lr,
-                                momentum=args.momentum,
-                                weight_decay=args.weight_decay)
+    if args.optim == 'SGD':
+        optimizer = torch.optim.SGD(model.parameters(), args.lr,
+                                    momentum=args.momentum,
+                                    weight_decay=args.weight_decay)
+    elif args.optim == 'AdamW':
+        optimizer = torch.optim.AdamW(model.parameters(), args.lr,
+                                    betas=(0.9, 0.999), eps=1e-8,
+                                    weight_decay=args.weight_decay)
+    else:
+        raise NotImplementedError(f"{args.optim}")
 
     # optionally resume from a checkpoint
     if args.resume:

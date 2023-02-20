@@ -11,9 +11,16 @@ URL='tcp://10.128.61.6:20004'
 WORD_SIZE=$2
 RANK=$1
 EPOCHS=200
-LR=0.12 # use 4 nodes, 4 x 256 = 1024
 BATCHSIZE=256 # bs of 1 node
-time python main_pretrain.py -a $ARCH --lr $LR --batch-size $BATCHSIZE --epochs $EPOCHS --world-size $WORD_SIZE --rank $RANK --dist-url $URL --multiprocessing-distributed --use-mixed-precision --mlp --moco-t 0.2 --aug-plus --cos --mae \
+
+# OPT=SGD
+# LR=0.12 # use 4 nodes, 4 x 256 = 1024
+# WD=1e-4
+OPT=AdamW
+LR=8e-4 # use 4 nodes, 4 x 256 = 1024
+WD=8e-2
+
+time python main_pretrain.py -a $ARCH --optim $OPT --lr $LR --wd $WD --batch-size $BATCHSIZE --epochs $EPOCHS --world-size $WORD_SIZE --rank $RANK --dist-url $URL --multiprocessing-distributed --use-mixed-precision --mlp --moco-t 0.2 --aug-plus --cos --mae \
     $DATAPATH
     # --fast-moco --cutmix --mixup --dense \
 

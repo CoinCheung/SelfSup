@@ -112,7 +112,7 @@ class MAEMasker(nn.Module):
         target = target.reshape(N, nh, nw, psize, psize, C)
         target = torch.einsum('nhwpqc->nchpwq', target)
         target = target.reshape(N, C, H, W)
-        return target
+        return target.detach()
 
     def compute_l2_loss(self, feat, target, mask):
         target = self.patch_norm_target(target)
