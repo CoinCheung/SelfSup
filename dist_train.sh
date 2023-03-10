@@ -1,4 +1,5 @@
 
+
 export CUDA_VISIBLE_DEVICES=0,1,2,3,4,5,6,7
 
 rm log_linear_$1.txt log_finetune_$1.txt detection/log_det_$1.txt segmentation/log_seg_$1.txt
@@ -6,22 +7,23 @@ rm log_linear_$1.txt log_finetune_$1.txt detection/log_det_$1.txt segmentation/l
 # for pretrain
 ARCH=resnet50
 # ARCH=resnet101
-DATAPATH=/data/zzy/.datasets/imagenet
+DATAROOT=/nfs-data/zzy/.dataset/imagenet
+ANNPTH=/nfs-data/zzy/.dataset/imagenet/train_ssl.txt
 URL='tcp://10.128.61.6:20004'
 WORD_SIZE=$2
 RANK=$1
 EPOCHS=200
 BATCHSIZE=256 # bs of 1 node
 
-# OPT=SGD
-# LR=0.12 # use 4 nodes, 4 x 256 = 1024
-# WD=1e-4
-OPT=AdamW
-LR=8e-4 # use 4 nodes, 4 x 256 = 1024
-WD=8e-2
+OPT=SGD
+LR=0.12 # use 4 nodes, 4 x 256 = 1024
+WD=1e-4
+# OPT=AdamW
+# LR=8e-4 # use 4 nodes, 4 x 256 = 1024
+# WD=2e-2
 
-time python main_pretrain.py -a $ARCH --optim $OPT --lr $LR --wd $WD --batch-size $BATCHSIZE --epochs $EPOCHS --world-size $WORD_SIZE --rank $RANK --dist-url $URL --multiprocessing-distributed --use-mixed-precision --mlp --moco-t 0.2 --aug-plus --cos --mae \
-    $DATAPATH
+time python main_pretrain.py -a $ARCH --optim $OPT --lr $LR --wd $WD --batch-size $BATCHSIZE --epochs $EPOCHS --data-root $DATAROOT --ann-path $ANNPTH --world-size $WORD_SIZE --rank $RANK --dist-url $URL --multiprocessing-distributed --use-mixed-precision --mlp --moco-t 0.2 --aug-plus --cos --mae
+
     # --fast-moco --cutmix --mixup --dense \
 
 # linear eval and finetune

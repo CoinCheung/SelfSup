@@ -136,4 +136,5 @@ log*txt
 dist_train_6127.sh
 dist_train_1.sh
 run_*sh
+tmp.sh
 

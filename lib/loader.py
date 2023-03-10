@@ -1,10 +1,46 @@
+from copy import deepcopy
+import os.path as osp
 import random
 
-from PIL import ImageFilter
+from PIL import ImageFilter, Image
 import numpy as np
 import torch
+from torch.utils.data import Dataset
 import torchvision.datasets as datasets
 import torchvision.transforms as transforms
+
+
+class ImageList(Dataset):
+    '''
+    '''
+    def __init__(self, dataroot, annpath, n_views=2, transforms=None, mae=None):
+        super(ImageList, self).__init__()
+        assert not transforms is None
+        self.transforms = transforms
+        self.mae = mae
+        self.n_views = n_views
+
+        with open(annpath, 'r') as fr:
+            lines = fr.read().splitlines()
+        self.img_paths = [osp.join(dataroot, el) for el in lines]
+        self.len = len(self.img_paths)
+
+    def __getitem__(self, ind):
+        res = {}
+        im = Image.open(self.img_paths[ind]).convert("RGB")
+        for i in range(self.n_views):
+            res[f'view{i}'] = self.transforms(im)
+
+        if not self.mae is None:
+            ind = (ind + self.mae['roll']) % self.len
+            im = Image.open(self.img_paths[ind]).convert("RGB")
+            res['im_mae'] = self.mae['transforms'](im)
+
+        return res
+
+    def __len__(self):
+        return self.len
+
 
 
 class TwoCropsTransform:
@@ -76,7 +112,7 @@ class ToTensorBatchGPU(object):
 def to_torch_func(x):
     return torch.from_numpy(np.array(x))
 
-def get_dataset(traindir, aug_plus=True, n_views=2):
+def get_dataset(traindir, annpth, aug_plus=True, n_views=2, mae=None):
     normalize = transforms.Normalize(mean=[0.485, 0.456, 0.406],
                                      std=[0.229, 0.224, 0.225])
     if aug_plus:
@@ -104,6 +140,10 @@ def get_dataset(traindir, aug_plus=True, n_views=2):
             #  normalize
             to_torch_func
         ]
+    if not mae is None:
+        augs_mae = deepcopy(augmentation)
+        augs_mae[0] = transforms.RandomResizedCrop(224, scale=(0.67, 1.))
+        mae['transforms'] = transforms.Compose(augs_mae)
 
     #  with open('/data/zzy/.datasets/combine/dup_fnames.txt', 'r') as fr:
     #      lines = fr.read().splitlines()
@@ -111,10 +151,15 @@ def get_dataset(traindir, aug_plus=True, n_views=2):
     #  def is_valid_file_func(pth):
     #      if pth in dup_lines: return False
     #      return True
-    train_dataset = datasets.ImageFolder(
-        traindir,
-        #  TwoCropsTransform(transforms.Compose(augmentation)))
-        NCropsTransform(transforms.Compose(augmentation), n_crops=n_views),
-        #  is_valid_file=is_valid_file_func
+    #  train_dataset = datasets.ImageFolder(
+    #      traindir,
+    #      #  TwoCropsTransform(transforms.Compose(augmentation)))
+    #      NCropsTransform(transforms.Compose(augmentation), n_crops=n_views),
+    #      #  is_valid_file=is_valid_file_func
+    #  )
+    train_dataset = ImageList(
+        traindir, annpth, n_views,
+        transforms.Compose(augmentation),
+        mae=mae,
     )
     return train_dataset

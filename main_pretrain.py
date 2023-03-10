@@ -34,8 +34,8 @@ model_names = ['resnet18', 'resnet50', 'resnet101']
 model_dict = {'resnet18': resnet18, 'resnet50': resnet50, 'resnet101': resnet101}
 
 parser = argparse.ArgumentParser(description='PyTorch ImageNet Training')
-parser.add_argument('data', metavar='DIR',
-                    help='path to dataset')
+parser.add_argument('--data-root', metavar='DIR', help='path to dataset')
+parser.add_argument('--ann-path', metavar='DIR', help='path to dataset ann file')
 parser.add_argument('-a', '--arch', metavar='ARCH', default='resnet50',
                     choices=model_names,
                     help='model architecture: ' +
@@ -256,14 +256,15 @@ def main_worker(gpu, ngpus_per_node, args):
     cudnn.benchmark = True
 
     # Data loading code
-    traindir = os.path.join(args.data, 'train')
-
     n_views = 2
     if args.fast_moco: n_views += 1
     if args.cutmix: n_views += 1
     if args.mixup: n_views += 1
-    if args.mae: n_views += 1
-    train_dataset = lib.loader.get_dataset(traindir, args.aug_plus, n_views)
+    mae = None
+    if args.mae: mae = {'roll': args.batch_size * args.world_size}
+    train_dataset = lib.loader.get_dataset(
+            args.data_root, args.ann_path,
+            args.aug_plus, n_views, mae)
 
     if args.distributed:
         train_sampler = torch.utils.data.distributed.DistributedSampler(train_dataset)
@@ -319,15 +320,14 @@ def train(train_loader, model, optimizer, epoch, scaler, args):
     model.train()
 
     end = time.time()
-    for i, (images, _) in enumerate(train_loader):
+    for i, images in enumerate(train_loader):
         # measure data loading time
         data_time.update(time.time() - end)
 
-        if args.gpu is not None:
-            n_views = len(images)
-            for im_i in range(n_views):
-                images[im_i] = images[im_i].cuda(args.gpu, non_blocking=True)
-                images[im_i] = to_tensor(images[im_i])
+        for k,v in images.items():
+            v = v.cuda(args.gpu, non_blocking=True)
+            images[k] = to_tensor(v)
+        images['views'] = [v for k,v in images.items() if k.startswith('view')]
 
         # compute output
         with amp.autocast(enabled=args.use_mixed_precision):
@@ -336,10 +336,11 @@ def train(train_loader, model, optimizer, epoch, scaler, args):
         # acc1/acc5 are (K+1)-way contrast classifier accuracy
         # measure accuracy and record loss
         with torch.no_grad():
+            batchsize = images['views'][0].size(0)
             acc1, acc5 = accuracy(logits, labels, topk=(1, 5))
-            losses.update(loss.item(), images[0].size(0))
-            top1.update(acc1[0], images[0].size(0))
-            top5.update(acc5[0], images[0].size(0))
+            losses.update(loss.item(), batchsize)
+            top1.update(acc1[0], batchsize)
+            top5.update(acc5[0], batchsize)
 
         # compute gradient and do SGD step
         optimizer.zero_grad()

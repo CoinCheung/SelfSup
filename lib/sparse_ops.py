@@ -26,6 +26,7 @@ class SparseConv2d(nn.Conv2d):
         if isinstance(x, torch.Tensor): return super().forward(x)
         x, mask = x
         mask_ = mask.expand_as(x).detach()
+        x = x.clone()
         x[~mask_] = 0.
         out = super().forward(x)
         sh, sw = self.stride
@@ -84,6 +85,7 @@ class SparseMaxPool2d(nn.MaxPool2d):
         if isinstance(x, torch.Tensor): return super().forward(x)
         x, mask = x
         mask_ = mask.expand_as(x).detach()
+        x = x.clone()
         x[~mask_] = -torch.inf
         out = super().forward(x)
         sh, sw = self.stride, self.stride
@@ -105,9 +107,9 @@ class SparseReLU(nn.ReLU):
         '''
         if isinstance(x, torch.Tensor): return super().forward(x)
         x, mask = x
-        out = super().forward(x).clone()
-        mask_ = mask.expand_as(out)
-        out[~mask_] = 0.
+        out = super().forward(x)
+        #  mask_ = mask.expand_as(out)
+        #  out[~mask_] = 0.
         return out, mask
 
 
